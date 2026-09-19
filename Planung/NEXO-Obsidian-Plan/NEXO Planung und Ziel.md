@@ -1,9 +1,9 @@
 # NEXO Planung und Ziel
 
-Stand: 20.09.2026 · Schritt 019 (Status abgeglichen, Zielplan bleibt bestehen)
+Stand: 20.09.2026 · Schritt 020 (KI-Desktopsteuerung ergänzt, Zielplan fortgeschrieben)
 Zielbild: Cloud-basierte persönliche Assistenz für PC, Handy und Telefon
 
-Die Nummern 000–015 unten sind Planungsphasen; die fortlaufenden Arbeitsnotizen unter `Schritte/` haben eine eigene Nummerierung. Zum aktuellen Code und seinen Grenzen siehe [[1 Aktueller Stand]] und [[019 2026-09-20 Analyse der Aenderungen]].
+Die Nummern 000–015 unten sind Planungsphasen; die fortlaufenden Arbeitsnotizen unter `Schritte/` haben eine eigene Nummerierung. Zum aktuellen Code und seinen Grenzen siehe [[1 Aktueller Stand]], [[019 2026-09-20 Analyse der Aenderungen]] und [[020 2026-09-20 KI-Desktopsteuerung und Fehlerbehebung]].
 
 ## Das Ziel
 
@@ -34,17 +34,18 @@ Das Ziel ist eine Cloud-KI, die:
 - Partikelkopf aus einem 3D-Modell mit 99.220 Punkten, Mausverfolgung, Blinzeln und Mundanimation während Sprachausgabe.
 - Browser-Spracherkennung, Browser-Sprachausgabe und Gesprächsverlauf in der Sitzung.
 - Feste Anbieterzuordnung: Fokus → Gemini; Bereit/Energie → OpenAI.
-- Erste Werkzeugaufrufe für gelistete Programme (öffnen/schließen), Websuche und Moduswechsel.
+- KI-gestützte Desktopsteuerung über Bildschirmbeobachtung sowie Maus-, Tastatur-, Text-, Scroll- und Warteaktionen.
+- Explizite PC-Freigabe, sensible-Aktion-Bestätigung, Ablaufzeit, Stoppschalter und Schutz vor NEXO-eigenen Fenstern.
 - Großansicht, Pause, Zentrieren, Browsernotiz und Fokus-Timer.
 
-Diese Funktionen sind Prototypen. Die Prüfung in Schritt 019 dokumentiert offene Fehler bei Programmstart/-ende, API-Zugriffsschutz, Sprachablauf, Werkzeugrunden und URL-Verarbeitung. Sie sind noch nicht behoben.
+Diese Funktionen sind Prototypen. Die sieben Befunde aus Schritt 019 sind im Code behoben und in Schritt 020 getestet. Echte Interaktion mit dem Benutzer-PC, Mikrofon und globalem Stop-Hotkey muss noch praktisch geprüft werden.
 
 ## Was heute noch nicht funktioniert
 
 - kein in der Cloud betriebener NEXO-Core mit Anmeldung und dauerhaftem Gedächtnis
 - kein allgemeiner Wechsel zwischen beliebigen Anbietern/Modellen; Claude, Astra und Mistral sind nicht integriert
 - keine Verbindung zu Obsidian, Kalender oder GitHub aus der App
-- keine allgemeine PC-Steuerung über die vorhandenen gelisteten Werkzeuge hinaus
+- kein vollständig autonomer Desktopbetrieb ohne ausdrückliche Freigabe; die erste Version arbeitet bewusst mit Bildschirmbild, Einzelaktion, erneuter Beobachtung und Bestätigungen
 - keine Handy-App, Push-Nachrichten oder Telefonie
 - Browsernotizen werden nicht als Obsidian-Dateien gespeichert
 
@@ -124,7 +125,7 @@ Aufgaben: Kleine lokale Bridge, verschlüsselte Geräte-Paarung, Werkzeugkatalog
 
 Erste Werkzeuge: Programm öffnen, Datei suchen und Lautstärke ändern.
 
-Fertig, wenn: NEXO nur fest definierte Werkzeuge benutzt und jede Aktion im HUD bestätigt wird.
+Fertig, wenn: NEXO freigegebene Desktopaktionen über eine lokale Bridge ausführt, jede Aktion nachvollziehbar ist und der Stoppschalter funktioniert. Die erste Umsetzung aus Schritt 020 ist ein Prototyp; Paarung und Geräteverwaltung folgen später.
 
 ### Schritt 008 – Berechtigungen und Bestätigungen
 
@@ -202,4 +203,4 @@ Fertig, wenn: Ein Fehler keine stillen PC-Aktionen verursacht und der komplette 
 
 ## Aktueller nächster Schritt
 
-Zuerst die vorhandenen Sprach- und PC-Werkzeuge anhand der Befunde aus [[019 2026-09-20 Analyse der Aenderungen]] stabilisieren. Die KI-Anbindung existiert inzwischen; ein allgemeiner Modell-Router und ein in der Cloud betriebener Core bleiben Ziele. Umsetzung beginnt erst nach ausdrücklichem Auftrag.
+Als Nächstes die Desktopsteuerung praktisch im HUD testen: Fokus-Modus wählen, PC-Steuerung freigeben und eine harmlose Aufgabe ohne Speichern ausführen. Danach folgen Geräte-Paarung, dauerhafte Sitzungen und der Cloud-Core. [[020 2026-09-20 KI-Desktopsteuerung und Fehlerbehebung]] enthält den aktuellen Testauftrag.

@@ -5,7 +5,8 @@ let mode='standby',paused=matchMedia('(prefers-reduced-motion: reduce)').matches
 const EXPLODE_SCALE=.85;
 function log(message){}
 function updateTime(){$('clock').textContent=new Date().toLocaleTimeString('de-CH');$('date').textContent=new Date().toLocaleDateString('de-CH',{weekday:'long',day:'numeric',month:'long'});$('day').textContent=new Date().toLocaleDateString('de-CH',{day:'2-digit',month:'2-digit'});}updateTime();setInterval(updateTime,1000);
-document.querySelectorAll('[data-mode]').forEach(button=>button.onclick=()=>{if(transition)return;transition={to:button.dataset.mode,button,start:performance.now(),duration:900,switched:false};});
+window.nexoSetMode = value => { const button = document.querySelector('[data-mode="' + value + '"]'); if (!button || (mode === value && !transition)) return; transition = { to:value, button, start:performance.now(), duration:900, switched:false }; };
+document.querySelectorAll('[data-mode]').forEach(button=>button.onclick=()=>window.nexoSetMode(button.dataset.mode));
 function expand(){document.body.classList.toggle('expanded');$('expand').textContent=document.body.classList.contains('expanded')?'↙':'⛶';$('expand').setAttribute('aria-label',document.body.classList.contains('expanded')?'Gesichtsansicht verkleinern':'Gesicht vergrößern');resize();}
 $('expand').onclick=expand;$('face-open').onclick=expand;document.addEventListener('keydown',e=>{if(e.key==='Escape'&&document.body.classList.contains('expanded'))expand();});
 function motionLabel(){$('motion').textContent=paused?'▶ Bewegung fortsetzen':'Ⅱ Bewegung pausieren';}motionLabel();$('motion').onclick=()=>{paused=!paused;motionLabel();};

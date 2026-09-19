@@ -1,0 +1,313 @@
+'use strict';
+const { test } = require('node:test');
+const assert = require('node:assert/strict');
+const http = require('node:http');
+const { createNexoServer, validateMessages } = require('../Server/server');
+const { createAgent, TOOL_DEFS } = require('../Server/agent');
+const { DesktopController, NativeBridge, validateAction } = require('../Server/desktop');
+const { MicController, SerialQueue } = require('../App/conversation-state');
+const turn = () => new Promise(resolve => setImmediate(resolve));
+
+function fakeBridge() {
+  const calls = [];
+  return {
+    calls,
+    async watchStop(fn) { this.stop = fn; return () => {}; },
+    async observe() { calls.push('observe'); return { image: 'TEST_IMAGE_NOT_A_SCREENSHOT', width: 100, height: 50, screenWidth: 200, screenHeight: 100, left: -200, top: 0, title: 'Test', hud: [] }; },
+    async act(a) { calls.push(a); return { ok: true }; }
+  };
+}
+async function fixture(t, run = async () => ({ reply: 'Test', toolLog: [] })) {
+  const bridge = fakeBridge();
+  const app = createNexoServer({ env: {}, bridge, agent: { models: { openai: 'test', gemini: 'test' }, run } });
+  await new Promise(resolve => app.server.listen(0, '127.0.0.1', resolve));
+  t.after(() => new Promise(resolve => { app.stopAll(); app.server.closeAllConnections(); app.server.close(resolve); }));
+  const base = 'http://127.0.0.1:' + app.server.address().port;
+  const res = await fetch(base + '/api/session');
+  const cookie = res.headers.get('set-cookie').split(';')[0], { token } = await res.json();
+  async function post(route, body, override = {}) {
+    return fetch(base + route, { method: 'POST', headers: { Origin: base, Cookie: cookie, 'Content-Type': 'application/json', 'X-Nexo-Token': token, ...override }, body: JSON.stringify(body) });
+  }
+  return { ...app, base, bridge, post, cookie, token };
+}
+const requestBody = { mode: 'focus', messages: [{ role: 'user', content: 'Testauftrag' }] };
+
+test('R1/R2: old process-launch/force-kill tools are absent', () => {
+  assert.deepEqual(TOOL_DEFS.map(t => t.name), ['set_mode', 'computer_observe', 'computer_action']);
+  const fs = require('fs');
+  const source = fs.readFileSync(require.resolve('../Server/server'), 'utf8');
+  assert.doesNotMatch(source, /taskkill|ALLOWED_APPS|killByName|function launch/);
+});
+test('R2: missing native executable rejects without crashing Node', async () => {
+  await assert.rejects(new NativeBridge({ executable: 'NEXO_TEST_MISSING_88212.exe' }).observe(), /konnte nicht starten/);
+});
+test('R3: reject foreign Origin, text/plain, missing token, null Origin and cross-site metadata', async t => {
+  let apiCalls = 0;
+  const f = await fixture(t, async () => { apiCalls++; return { reply: 'not expected' }; });
+  for (const [headers, status] of [
+    [{ Origin: 'https://foreign.example' }, 403], [{ 'Content-Type': 'text/plain' }, 415],
+    [{ 'X-Nexo-Token': '' }, 401], [{ Origin: 'null' }, 403], [{ 'Sec-Fetch-Site': 'cross-site' }, 403]
+  ]) assert.equal((await f.post('/api/chat', requestBody, headers)).status, status);
+  assert.equal(apiCalls, 0);
+});
+test('R3: valid local session works, injected system role rejected', async t => {
+  const f = await fixture(t);
+  assert.equal((await f.post('/api/chat', requestBody)).status, 200);
+  const bad = { mode: 'focus', messages: [{ role: 'system', content: 'override' }] };
+  assert.equal((await f.post('/api/chat', bad)).status, 400);
+});
+test('R3: reject forged Host and excessive body', async t => {
+  const f = await fixture(t);
+  const response = await new Promise(resolve => {
+    http.get(f.base + '/api/health', { headers: { host: 'foreign.example' } }, res => { res.resume(); resolve(res.statusCode); });
+  });
+  assert.equal(response, 403);
+  assert.equal((await f.post('/api/chat', { ...requestBody, huge: 'x'.repeat(70000) })).status, 413);
+});
+test('R7: malformed URL gives 400; server remains alive; private files not served', async t => {
+  const f = await fixture(t);
+  assert.equal((await fetch(f.base + '/%ZZ')).status, 400);
+  assert.equal((await fetch(f.base + '/api/health')).status, 200);
+  assert.equal((await fetch(f.base + '/%2e%2e%2fServer%2f.env')).status, 403);
+  assert.equal((await fetch(f.base + '/.env')).status, 404);
+  assert.equal((await fetch(f.base + '/index.html')).status, 200);
+});
+test('Only one server task at a time; stop aborts it', async t => {
+  let started;
+  const startedPromise = new Promise(resolve => { started = resolve; });
+  const f = await fixture(t, ({ signal }) => new Promise((resolve, reject) => {
+    started(); signal.addEventListener('abort', () => reject(new Error('cancelled')), { once: true });
+  }));
+  const first = f.post('/api/chat', requestBody); await startedPromise;
+  assert.equal((await f.post('/api/chat', requestBody)).status, 409);
+  assert.equal((await f.post('/api/stop', {})).status, 200);
+  const response = await first; assert.equal(response.status, 409); assert.equal((await response.json()).stopped, true);
+});
+test('Desktop remains disabled until explicit session control grant', async t => {
+  const f = await fixture(t, async ({ execute, signal }) => ({ reply: await execute('computer_observe', {}, signal) }));
+  assert.equal((await f.post('/api/chat', requestBody)).status, 502);
+  assert.deepEqual(f.bridge.calls, []);
+  assert.equal((await f.post('/api/control', { enabled: true })).status, 200);
+  assert.deepEqual(f.bridge.calls, []); // grant alone takes no screenshot
+  await f.post('/api/stop', {});
+  assert.equal(f.desktop.owner, null);
+});
+test('A different session cannot reuse the first session token', async t => {
+  const f = await fixture(t);
+  const second = await fetch(f.base + '/api/session');
+  const otherCookie = second.headers.get('set-cookie').split(';')[0];
+  assert.equal((await f.post('/api/chat', requestBody, { Cookie: otherCookie })).status, 401);
+});
+test('validate messages rejects invalid content and bounds history', () => {
+  assert.throws(() => validateMessages([{ role: 'user', content: 'x'.repeat(8001) }]));
+  assert.throws(() => validateMessages(Array(33).fill({ role: 'user', content: 'hi' })));
+  assert.throws(() => validateMessages([{ role: 'assistant', content: 'last' }]));
+});
+
+function providerMock(responses, captured) {
+  return async (url, options) => {
+    captured.push({ url, ...options, body: JSON.parse(options.body) });
+    assert.ok(responses.length, 'Unexpected additional API request');
+    return { ok: true, status: 200, json: async () => responses.shift() };
+  };
+}
+const gemini = parts => ({ candidates: [{ content: { role: 'model', parts } }] });
+const openai = message => ({ choices: [{ message: { role: 'assistant', ...message } }] });
+test('R6 Gemini: all parallel calls, original thought signatures and IDs, then another tool round', async () => {
+  const captured = [], calls = [];
+  const firstParts = [{ text: 'thinking', thought: true }, { functionCall: { name: 'set_mode', id: 'a', args: { mode: 'focus' } }, thoughtSignature: 'signature-a' }, { functionCall: { name: 'set_mode', id: 'b', args: { mode: 'energy' } } }];
+  const agent = createAgent({ env: { GEMINI_API_KEY: 'fake' }, fetchImpl: providerMock([
+    gemini(firstParts), gemini([{ functionCall: { name: 'set_mode', id: 'c', args: { mode: 'standby' } } }]), gemini([{ text: 'Fertig' }])
+  ], captured) });
+  const result = await agent.run({ ...requestBody, execute: async (name, args) => { calls.push(args.mode); return { ok: true }; } });
+  assert.deepEqual(calls, ['focus', 'energy', 'standby']); assert.equal(result.reply, 'Fertig');
+  assert.deepEqual(captured[1].body.contents[1].parts, firstParts);
+  assert.deepEqual(captured[1].body.contents[2].parts.map(p => p.functionResponse.id), ['a', 'b']);
+  assert.doesNotMatch(captured[0].url, /fake/); // API key stays in header
+  assert.doesNotMatch(JSON.stringify(captured[0].body.tools), /additionalProperties/);
+});
+test('R6 OpenAI: multiple calls and follow-up rounds preserve tool ids', async () => {
+  const captured = [], calls = [];
+  const fn = id => ({ id, type: 'function', function: { name: 'set_mode', arguments: '{"mode":"focus"}' } });
+  const agent = createAgent({ env: { OPENAI_API_KEY: 'fake' }, fetchImpl: providerMock([
+    openai({ tool_calls: [fn('a'), fn('b')], content: null }), openai({ tool_calls: [fn('c')], content: null }), openai({ content: 'Fertig' })
+  ], captured) });
+  const result = await agent.run({ ...requestBody, mode: 'standby', execute: async () => { calls.push(1); return { ok: true }; } });
+  assert.equal(calls.length, 3); assert.equal(result.reply, 'Fertig');
+  assert.deepEqual(captured[1].body.messages.filter(m => m.role === 'tool').map(m => m.tool_call_id), ['a', 'b']);
+});
+test('Vision loop supplies screenshot with matching frameId and no images in public log', async () => {
+  const captured = [];
+  const agent = createAgent({ env: { GEMINI_API_KEY: 'fake' }, fetchImpl: providerMock([
+    gemini([{ functionCall: { name: 'computer_observe', args: {} } }]), gemini([{ text: 'Bild gesehen' }])
+  ], captured) });
+  const result = await agent.run({ ...requestBody, controlEnabled: true, execute: async () => ({ ok: true, frameId: 'frame1', image: 'FAKE_IMAGE', mimeType: 'image/jpeg' }) });
+  const parts = captured[1].body.contents.at(-1).parts;
+  assert.ok(parts.some(p => p.inlineData?.data === 'FAKE_IMAGE'));
+  assert.ok(parts.some(p => p.text?.includes('frame1')));
+  assert.equal(JSON.stringify(result.toolLog).includes('FAKE_IMAGE'), false);
+});
+test('Disabled desktop tool cannot be executed even if model requests it', async () => {
+  const captured = [];
+  const agent = createAgent({ env: { GEMINI_API_KEY: 'fake' }, fetchImpl: providerMock([
+    gemini([{ functionCall: { name: 'computer_observe', args: {} } }]), gemini([{ text: 'Bitte freigeben' }])
+  ], captured) });
+  let executions = 0;
+  const result = await agent.run({ ...requestBody, execute: async () => { executions++; } });
+  assert.equal(executions, 0); assert.equal(result.toolLog[0].result.ok, false);
+});
+test('Agent honours abort and bounded tool rounds', async () => {
+  const captured = [];
+  const response = gemini([{ functionCall: { name: 'set_mode', args: { mode: 'focus' } } }]);
+  const agent = createAgent({ maxRounds: 2, env: { GEMINI_API_KEY: 'fake' }, fetchImpl: providerMock([response, response], captured) });
+  const result = await agent.run({ ...requestBody, execute: async () => ({ ok: true }) });
+  assert.equal(result.limited, true); assert.equal(captured.length, 2);
+  const c = new AbortController(); c.abort();
+  await assert.rejects(agent.run({ ...requestBody, signal: c.signal, execute() {} }), /gestoppt/);
+});
+
+test('Desktop validates coordinates and consumes old frames; negative monitor offset scales correctly', async () => {
+  const bridge = fakeBridge(), desktop = new DesktopController({ bridge });
+  await desktop.enable('owner');
+  const shot = await desktop.observe('owner');
+  const action = { action: 'click', frameId: shot.frameId, x: 99, y: 49, reason: 'Test', risk: 'routine' };
+  const next = await desktop.action('owner', action);
+  assert.notEqual(next.frameId, shot.frameId);
+  const native = bridge.calls.find(c => typeof c === 'object');
+  assert.equal(native.x, -1); assert.equal(native.y, 99);
+  await assert.rejects(desktop.action('owner', action), /veraltet/);
+  await assert.rejects(desktop.action('owner', { ...action, frameId: next.frameId, x: 100 }), /außerhalb/);
+  desktop.disable();
+});
+test('No actions on stale frame or without grant', async () => {
+  let now = 1000;
+  const desktop = new DesktopController({ bridge: fakeBridge(), now: () => now });
+  await assert.rejects(desktop.observe('owner'), /einschalten/);
+  await desktop.enable('owner'); const shot = await desktop.observe('owner'); now += 45001;
+  await assert.rejects(desktop.action('owner', { action: 'key', key: 'WIN', reason: 'Test', risk: 'routine', frameId: shot.frameId }), /veraltet/);
+  desktop.disable();
+});
+test('Sensitive action: no execution before approval; reobserve required after approval', async () => {
+  const bridge = fakeBridge(), desktop = new DesktopController({ bridge });
+  await desktop.enable('owner'); const shot = await desktop.observe('owner');
+  const action = { action: 'key', key: 'ALT+F4', frameId: shot.frameId, reason: 'Fenster schließen', risk: 'routine' };
+  const pending = desktop.action('owner', action); await turn();
+  const request = desktop.status('owner').approval;
+  assert.ok(request); assert.equal(bridge.calls.filter(c => typeof c === 'object').length, 0);
+  assert.throws(() => desktop.answerApproval('other', request.id, true));
+  desktop.answerApproval('owner', request.id, true);
+  assert.equal((await pending).approvalGranted, true);
+  await assert.rejects(desktop.action('owner', action), /veraltet/);
+  const fresh = await desktop.observe('owner');
+  await desktop.action('owner', { ...action, frameId: fresh.frameId });
+  assert.equal(bridge.calls.filter(c => typeof c === 'object').length, 1);
+  desktop.disable();
+});
+test('Denied/cancelled approval never performs the action', async () => {
+  for (const abort of [false, true]) {
+    const bridge = fakeBridge(), desktop = new DesktopController({ bridge });
+    await desktop.enable('owner'); const shot = await desktop.observe('owner'), c = new AbortController();
+    const pending = desktop.action('owner', { action: 'key', key: 'DELETE', frameId: shot.frameId, reason: 'Löschen', risk: 'routine' }, c.signal);
+    const rejection = assert.rejects(pending);
+    await turn();
+    if (abort) c.abort(); else desktop.answerApproval('owner', desktop.status('owner').approval.id, false);
+    await rejection; assert.equal(bridge.calls.filter(c => typeof c === 'object').length, 0);
+    desktop.disable();
+  }
+});
+test('Global hotkey and HUD heartbeat loss revoke control', async () => {
+  let now = 0, stops = 0;
+  const bridge = fakeBridge(), desktop = new DesktopController({ bridge, now: () => now, onStop: () => { stops++; } });
+  await desktop.enable('owner'); bridge.stop('hotkey'); assert.equal(desktop.owner, null);
+  await desktop.enable('owner'); now = 15001; desktop.expire(); assert.equal(desktop.owner, null); assert.equal(stops, 2);
+});
+test('Invalid keyboard/text actions rejected before native input', () => {
+  for (const extra of [{ action: 'type', text: 'line1\nline2' }, { action: 'key', key: 'arbitrary.exe' }, { action: 'key', key: 'CTRL+ALT+F12' }, { action: 'scroll', x: 0, y: 0, steps: 500 }])
+    assert.throws(() => validateAction({ frameId: 'f', reason: 'Test', risk: 'routine', ...extra }));
+});
+
+function micFixture() {
+  const pending = [];
+  const rec = { starts: 0, aborts: 0, start() { this.starts++; }, abort() { this.aborts++; } };
+  const mic = new MicController({ recognition: rec, delay(fn) { pending.push(fn); return fn; }, clear(fn) { const i = pending.indexOf(fn); if (i >= 0) pending.splice(i, 1); } });
+  return { rec, mic, flush() { const jobs = pending.splice(0); jobs.forEach(fn => fn()); } };
+}
+test('R4: microphone resumes after off/on and recognition end', () => {
+  const { rec, mic, flush } = micFixture();
+  mic.setWanted(true); rec.onstart();
+  mic.setWanted(false); rec.onend();
+  mic.setWanted(true); rec.onstart(); rec.onend(); flush();
+  assert.equal(rec.starts, 3); assert.equal(mic.wanted, true);
+});
+test('R4: fast off/on waits for old recognition to finish', () => {
+  const { rec, mic, flush } = micFixture();
+  mic.setWanted(true); mic.setWanted(false); mic.setWanted(true);
+  assert.equal(rec.starts, 1);
+  rec.onend(); flush(); assert.equal(rec.starts, 2);
+});
+test('R5: busy state immediately pauses recognition and resumes after work', () => {
+  const { rec, mic, flush } = micFixture();
+  mic.setWanted(true); rec.onstart(); mic.setBusy(true);
+  assert.equal(rec.aborts, 1);
+  rec.onend(); flush(); assert.equal(rec.starts, 1);
+  mic.setBusy(false); assert.equal(rec.starts, 2);
+});
+test('Mic permission failure leaves visible intent off', () => {
+  const { rec, mic, flush } = micFixture();
+  mic.setWanted(true); rec.onerror({ error: 'not-allowed' }); rec.onend(); flush();
+  assert.equal(mic.wanted, false); assert.equal(rec.starts, 1);
+});
+test('R5: queued tasks stay serial; stop drops waiting commands and aborts current', async () => {
+  let active = 0, max = 0; const processed = [];
+  let unblock;
+  const queue = new SerialQueue({ run: async (text, signal) => {
+    processed.push(text); max = Math.max(max, ++active);
+    await new Promise(resolve => { unblock = resolve; signal.addEventListener('abort', resolve, { once: true }); });
+    active--;
+  }});
+  queue.push('first'); queue.push('second'); assert.deepEqual(processed, ['first']);
+  unblock(); await turn(); assert.deepEqual(processed, ['first', 'second']);
+  queue.push('third'); queue.stop(); await turn();
+  assert.deepEqual(processed, ['first', 'second']); assert.equal(max, 1); assert.equal(queue.running, false);
+});
+
+test('OpenAI vision sends an image input after tool results, never as a text blob', async () => {
+  const captured = [];
+  const agent = createAgent({ env: { OPENAI_API_KEY: 'fake' }, fetchImpl: providerMock([
+    openai({ content: null, tool_calls: [{ id: 'vision', type: 'function', function: { name: 'computer_observe', arguments: '{}' } }] }), openai({ content: 'Bild gesehen' })
+  ], captured) });
+  await agent.run({ ...requestBody, mode: 'standby', controlEnabled: true, execute: async () => ({ ok: true, frameId: 'frame2', image: 'FAKE', mimeType: 'image/jpeg' }) });
+  assert.equal(captured[1].body.messages.at(-1).content[1].image_url.url, 'data:image/jpeg;base64,FAKE');
+  assert.equal(captured[1].body.messages.at(-2).role, 'tool');
+});
+test('Stop during observation discards the image and invalidates the frame', async () => {
+  const bridge = fakeBridge(); let resolve;
+  bridge.observe = () => new Promise(done => { resolve = done; });
+  const desktop = new DesktopController({ bridge }); await desktop.enable('owner');
+  const pending = desktop.observe('owner');
+  const rejected = assert.rejects(pending);
+  desktop.disable();
+  resolve({ image: 'FAKE', width: 10, height: 10, screenWidth: 10, screenHeight: 10 });
+  await rejected; assert.equal(desktop.frame, null);
+});
+test('A failed tool returns an error to the model; it cannot claim a fabricated success', async () => {
+  const captured = [];
+  const agent = createAgent({ env: { GEMINI_API_KEY: 'fake' }, fetchImpl: providerMock([
+    gemini([{ functionCall: { name: 'set_mode', args: { mode: 'focus' } } }]), gemini([{ text: 'Fehlgeschlagen' }])
+  ], captured) });
+  const result = await agent.run({ ...requestBody, execute: async () => { throw new Error('Failure fixture'); } });
+  assert.equal(result.toolLog[0].result.ok, false);
+  assert.equal(captured[1].body.contents.at(-1).parts[0].functionResponse.response.message, 'Failure fixture');
+});
+test('HUD references existing elements and loads helpers before conversation', () => {
+  const fs = require('fs'), path = require('path');
+  const dir = path.resolve(__dirname, '../App'), html = fs.readFileSync(path.join(dir, 'index.html'), 'utf8');
+  const ids = new Set([...html.matchAll(/\bid="([^"]+)"/g)].map(m => m[1]));
+  for (const file of ['app.js', 'conversation.js']) {
+    for (const match of fs.readFileSync(path.join(dir, file), 'utf8').matchAll(/\$\('([^']+)'\)/g))
+      assert.ok(ids.has(match[1]), file + ': missing #' + match[1]);
+  }
+  const scripts = [...html.matchAll(/<script src="([^"]+)"/g)].map(m => m[1]);
+  for (const name of scripts) assert.ok(fs.existsSync(path.join(dir, name)), name);
+  for (const name of ['app.js', 'api.js', 'conversation-state.js']) assert.ok(scripts.indexOf(name) < scripts.indexOf('conversation.js'));
+});

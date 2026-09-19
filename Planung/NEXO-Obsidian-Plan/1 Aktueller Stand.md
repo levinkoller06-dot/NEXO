@@ -1,15 +1,15 @@
 # Aktueller Stand – NEXO
 
-Stand: 20.09.2026 · Schritt 019 (Analyse des Codes bis Schritt 018)
+Stand: 20.09.2026 · Schritt 020 (KI-gestützte Desktopsteuerung und Fehlerbehebung)
 
 ## Funktioniert
-HUD mit 99.220 Punkten aus einem 3D-Kopfmodell, Mausverfolgung, Blinzeln, Mundanimation während Sprachausgabe, Farb-/Partikelübergängen, Großansicht, Pause, Browsernotiz und Fokus-Timer. Lokaler Node-Server mit Cloud-Anbietern: Fokus → Gemini, Bereit/Energie → OpenAI. Browser-Spracherkennung und Sprachausgabe, Gesprächsverlauf in der Sitzung. Erste Werkzeuge für gelistete Programme (öffnen/schließen), Websuche und Moduswechsel sind implementiert, haben aber offene Fehler.
+HUD mit 99.220 Punkten aus einem 3D-Kopfmodell, Mausverfolgung, Blinzeln, Mundanimation während Sprachausgabe, Farb-/Partikelübergängen, Großansicht, Pause, Browsernotiz und Fokus-Timer. Lokaler Node-Server mit Cloud-Anbietern: Fokus → Gemini, Bereit/Energie → OpenAI. Browser-Spracherkennung und Sprachausgabe, Gesprächsverlauf in der Sitzung. NEXO kann nach ausdrücklicher Freigabe Bildschirmbilder an das aktive Modell senden und daraus einzelne Maus-/Tastaturaktionen planen. Sensible Aktionen benötigen Bestätigung; der globale Stoppschalter bleibt verfügbar.
 
-## Offene Fehler aus der Analyse
-[[019 2026-09-20 Analyse der Aenderungen]] enthält sieben Befunde mit Nachweisen. Besonders dringend: erzwungenes Schließen kann ungespeicherte Arbeit verlieren; ein fehlgeschlagener Programmstart kann den Server beenden; die lokale Aktions-API prüft die Herkunft einer Anfrage nicht. Auch Mikrofon-Neustart, parallele Anfragen, Werkzeugrunden und URL-Fehlerbehandlung müssen korrigiert werden. Bei dieser Analyse wurde kein Anwendungscode geändert.
+## Behobene Befunde aus der Analyse
+[[019 2026-09-20 Analyse der Aenderungen]] enthielt sieben Befunde. [[020 2026-09-20 KI-Desktopsteuerung und Fehlerbehebung]] dokumentiert die Behebungen: kein erzwungenes Prozess-Schließen mehr, kontrollierte Helper-Fehler, geschützte lokale API, stabiler Mikrofon- und Anfrageablauf, mehrere Modell-/Werkzeugrunden sowie sichere URL-Fehlerbehandlung.
 
 ## Fehlt
-In der Cloud betriebener NEXO-Core, Anmeldung, dauerhafte Erinnerung, freie Anbieter-/Modellwahl, Kamera-Verfolgung, Kalender, Handy-App, Push und Telefonie. Die Notizfunktion schreibt noch nicht nach Obsidian; die PC-Steuerung ist auf die genannten Werkzeuge begrenzt.
+In der Cloud betriebener NEXO-Core, Anmeldung, dauerhafte Erinnerung, freie Anbieter-/Modellwahl, Kamera-Verfolgung, Kalender, Handy-App, Push und Telefonie. Die Notizfunktion schreibt noch nicht automatisch nach Obsidian. Echte Desktop-, Mikrofon- und globaler-Hotkey-Tests auf dem Benutzer-PC stehen noch aus.
 
 ## Beschlossen
 Cloud-KI bei lokal laufender Oberfläche und lokalem Server. OpenAI/Gemini sind angebunden; ein allgemeiner Modell-Router mit gemeinsamem dauerhaftem Kontext bleibt Ziel. Neue Umsetzung nur auf Auftrag.
@@ -34,6 +34,7 @@ Cloud-KI bei lokal laufender Oberfläche und lokalem Server. OpenAI/Gemini sind 
 - [[017 2026-09-20 Erste eng begrenzte PC-Steuerung]]
 - [[018 2026-09-20 Erweiterte PC-Steuerung, Modus per Sprache, verstecktes Serverfenster]]
 - [[019 2026-09-20 Analyse der Aenderungen]]
+- [[020 2026-09-20 KI-Desktopsteuerung und Fehlerbehebung]]
 
 Nach jedem abgeschlossenen Arbeits- oder Planungsschritt entsteht hier eine neue nummerierte Notiz im Ordner `Schritte`. Code und Notiz werden gemeinsam auf GitHub gesichert.
 
