@@ -1,10 +1,10 @@
 # NEXO – aktueller Projektstand
 
-Stand: 19.09.2026 · Schritt 007
+Stand: 19.09.2026 · Schritt 008
 
 ## Tatsächlich implementiert
 - Startbarer HUD-Prototyp: `NEXO starten.cmd` öffnet `App/index.html` als Edge-App-Fenster. Kein eigenständiger EXE-Installer.
-- Dunkles HUD mit prozeduralem Partikelkopf aus 51.965 Punkten. Die Gesichtsform ist breiter, hat eine aufrechte statt abfallende Stirn, eine definierte Augenbrauenkante, gerade Nase, breitere und eckigere Kieferlinie sowie ein nach vorne stehendes statt zurückweichendes Kinn; das Seitenprofil wirkt dadurch deutlich menschlicher. Die Ohren haben jetzt eine C-förmige Helix, eine innere Falte, eine Concha-Mulde und ein rundes Ohrläppchen statt eines flachen Rings. Referenzfotos wurden nur zur Proportionsanpassung genutzt, nicht als Bild eingebettet.
+- Dunkles HUD mit einem Partikelkopf aus rund 51.260 Punkten, der von einem echten 3D-Kopfmodell abgetastet wird ("Male Head" von Alexander Antipov, CC BY, siehe `App/README.md`) statt aus einer selbst gebauten Formel. Dadurch wirken Stirn, Augenpartie, Nase, Ohren, Kieferlinie und Kinn deutlich anatomisch stimmiger als in den vorherigen, rein prozeduralen Versionen. Die Originaldatei liegt unter `App/reference/male_head.obj`, wird von der App selbst nicht geladen; `App/head-mesh-data.js` enthält die einmalig umgerechneten Daten.
 - Kopf folgt dem Mauszeiger, Augen blinzeln, stumme Sprechanimation per Knopf mit einer eng begrenzten Mundöffnung statt des ganzen Kiefers; beim Öffnen werden zwei angedeutete Zahnreihen sichtbar.
 - Drei visuelle Modi: Bereit (Türkis), Fokus (Violett), Energie (Orange). Der Wechsel lässt die Partikelwolke auseinanderstieben, bis kein Gesicht mehr erkennbar ist, und wieder zu einem Gesicht in der neuen Farbe zusammenfinden. Diese wechseln KEINE KI-Modelle.
 - Große Gesichtsansicht, Escape zum Verkleinern, Bewegung pausieren, Ansicht zentrieren.
@@ -24,11 +24,12 @@ Stand: 19.09.2026 · Schritt 007
 - Noch kein Hauptmodell verbindlich ausgewählt und kein API-Key eingerichtet. Mistral war ein Vorschlag, keine fertige Integration.
 - Erst HUD gestalten, danach weitere Funktionen ausdrücklich beauftragen.
 - Nach jedem abgeschlossenen Änderungs- oder Planungsschritt neue Obsidian-Notiz plus GitHub-Push.
+- Abweichend von der bisherigen Regel "keine externen Referenzen einbetten": Der Nutzer hat sich bewusst für ein echtes, CC-BY-lizenziertes 3D-Kopfmodell statt einer selbst gebauten Formel entschieden (Alternative B in Schritt 008), weil die Gesichtsform trotz mehrfacher Nachbesserung nicht überzeugte. Die Lizenz erfordert Namensnennung, siehe `Code/App/README.md`.
 
 ## Überprüft
-- JavaScript-Syntax mit `node --check App/head.js` und `node --check App/app.js` erfolgreich. Die Punktdarstellung nutzt runde Partikel statt quadratischer Blöcke.
+- JavaScript-Syntax mit `node --check App/head.js`, `node --check App/app.js` und `node --check App/head-mesh-data.js` erfolgreich. Die Punktdarstellung nutzt runde Partikel statt quadratischer Blöcke.
 - Browseransicht visuell geprüft; Moduswechsel, Großansicht, Escape, Animation, Notiz-Speichermeldung und laufender Timer geprüft.
-- Die Gesichtsform, die Ohren, die enger begrenzte Mundöffnung mit Zähnen und der Explosions-/Wiederzusammensetzungs-Effekt beim Moduswechsel wurden per lokalem Testserver im Browser geprüft (Front-, Dreiviertel- und erzwungene Seitenansicht sowie ein erzwungener Zwischenstand der Moduswechsel-Animation).
+- Die neue mesh-basierte Kopfform, Sprechanimation mit Zähnen und der Explosions-/Wiederzusammensetzungs-Effekt beim Moduswechsel wurden per lokalem Testserver im Browser geprüft (Front-, Dreiviertel- und erzwungene Seitenansicht sowie ein erzwungener Zwischenstand der Moduswechsel-Animation). Dabei zwei mesh-bedingte Probleme gefunden und behoben: volle Kugelaugen ohne Lid-Maskierung, und eine Lücke am Mund durch vom Betrachter wegzeigende Normalen im Quellmesh.
 - Windows-Startdatei ausgeführt. Das separate Edge-Fenster wurde nicht zusätzlich per UI inspiziert.
 - Noch kein Test der Notiz nach Browserneustart und kein vollständiger 25-Minuten-Durchlauf. Smartphone-Layout noch nicht visuell geprüft.
 

@@ -32,7 +32,7 @@ function draw(now){requestAnimationFrame(draw);const dt=Math.min(40,now-lastTime
  const ry=yaw+Math.sin(t*.43)*.045,rx=pitch,sy=Math.sin(ry),co=Math.cos(ry),sx=Math.sin(rx),cr=Math.cos(rx),blink=Math.pow(Math.max(0,Math.cos(t*1.12+2)),100);const mouth=speaking?Math.abs(Math.sin(t*9)*Math.sin(t*3))*.095:0;
  const batches=Array.from({length:8},()=>[]);
  for(const p of points){let bx=p.x,by=p.y,bz=p.z;if(explode){bx+=p.ex*explode*EXPLODE_SCALE;by+=p.ey*explode*EXPLODE_SCALE;bz+=p.ez*explode*EXPLODE_SCALE;}
-  let py=by;if(p.eye)py=-.23+(py+.23)*(1-blink*.88);if(p.lip)py+=(p.y>.56?1:-1)*mouth;const px=bx*co+bz*sy,pz=-bx*sy+bz*co,yy=py*cr-pz*sx,zz=Math.min(3.2,py*sx+pz*cr);
+  let py=by;if(p.eye)py=-.024+(py+.024)*(1-blink*.88);if(p.lip)py+=(p.y>.75?1:-1)*mouth;const px=bx*co+bz*sy,pz=-bx*sy+bz*co,yy=py*cr-pz*sx,zz=Math.min(3.2,py*sx+pz*cr);
   const perspective=3.8/(3.8-zz),xx=cx+px*scale*perspective,y=cy+yy*scale*perspective;const nz=(-p.nx*sy+p.nz*co)*cr+p.ny*sx; if(nz<.025)continue; const nx=p.nx*co+p.nz*sy,ny=p.ny*cr-(-p.nx*sy+p.nz*co)*sx; const light=Math.max(0,-nx*.48-ny*.55+nz*.68); let alpha=p.a*(.12+.74*light)+Math.pow(1-nz,3)*.14; if(p.eye)alpha=.72;else if(p.teeth)alpha=Math.min(.92,mouth*9);const bucket=Math.min(7,Math.floor(alpha*8));batches[bucket].push([xx,y,p.eye?1.05:(p.teeth?.9:(zz>.5?.85:.6))]);
  }
  for(let b=0;b<8;b++){ctx.fillStyle=`rgba(${rgb},${(b+1)/8})`;ctx.beginPath();for(const [x,y,r]of batches[b]){ctx.moveTo(x+r*.72,y);ctx.arc(x,y,r*.72,0,Math.PI*2);}ctx.fill();}
