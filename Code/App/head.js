@@ -1,70 +1,105 @@
-// Sculpted head surface. Coordinates: x right, y down, z toward viewer.
-// No image texture: silhouette and anatomy are generated as real 3D points.
+// Natural male head surface. Coordinates: x right, y down, z toward viewer.
+// The reference is translated into anatomy and proportions; no image is embedded.
 function createHeadPoints() {
-  let seed = 712;
+  let seed = 1847;
   const random = () => ((seed = seed * 16807 % 2147483647) - 1) / 2147483646;
-  const g = (x,y,cx,cy,sx,sy) => Math.exp(-(((x-cx)/sx)**2 + ((y-cy)/sy)**2));
-  const profile = [[-1.4,.02],[-1.32,.35],[-1.15,.62],[-.9,.76],[-.6,.79],[-.3,.77],[0,.78],[.25,.75],[.5,.69],[.78,.61],[1,.48],[1.16,.3],[1.23,.08]];
-  function width(y) {
-    for(let i=1;i<profile.length;i++) if(y<=profile[i][0]) {
-      const [a,b]=profile[i-1], [c,d]=profile[i]; const t=Math.max(0,(y-a)/(c-a));
-      return b+(d-b)*t;
+  const g = (x, y, cx, cy, sx, sy) => Math.exp(-(((x - cx) / sx) ** 2 + ((y - cy) / sy) ** 2));
+
+  // A tapered forehead, broad cheek line and compact jaw give the head a human silhouette.
+  const contour = [
+    [-1.42, .18], [-1.35, .37], [-1.18, .53], [-.96, .63], [-.70, .68],
+    [-.42, .69], [-.12, .68], [.16, .65], [.42, .59], [.68, .49],
+    [.88, .38], [1.06, .27], [1.18, .15], [1.24, .05]
+  ];
+  function widthAt(y) {
+    if (y <= contour[0][0] || y >= contour[contour.length - 1][0]) return .04;
+    for (let i = 1; i < contour.length; i++) {
+      const [ay, aw] = contour[i - 1], [by, bw] = contour[i];
+      if (y <= by) {
+        const t = (y - ay) / (by - ay);
+        return aw + (bw - aw) * t;
+      }
     }
-    return .08;
+    return .04;
   }
-  function depth(x,y) {
-    const r=x/width(y);
-    let z=.53*Math.sqrt(Math.max(0,1-r*r));
-    z+=.15*g(x,y,0,-.83,.65,.5); // domed forehead
-    for(const side of [-1,1]) {
-      z-=.23*g(x,y,side*.32,-.23,.22,.14); // recessed sockets
-      z+=.15*g(x,y,side*.33,-.43,.28,.075); // straight brow ridge
-      z+=.19*g(x,y,side*.49,.08,.23,.17); // high cheekbones
-      z-=.12*g(x,y,side*.5,.4,.21,.25); // hollow beneath cheek
-      z+=.07*g(x,y,side*.5,.73,.18,.2); // jaw corner
-      z+=.115*g(x,y,side*.135,.22,.075,.065); // nasal wings
-      z-=.08*g(x,y,side*.10,.265,.043,.026); // nostrils
+  function depth(x, y) {
+    const half = Math.max(.04, widthAt(y));
+    const edge = Math.min(.999, Math.abs(x / half));
+    let z = .47 * Math.sqrt(Math.max(0, 1 - edge * edge));
+
+    // Skull, brow and eye sockets.
+    z += .075 * g(x, y, 0, -1.05, .52, .42);
+    for (const side of [-1, 1]) {
+      z += .115 * g(x, y, side * .30, -.42, .26, .075); // brows
+      z -= .155 * g(x, y, side * .29, -.275, .19, .105); // eye sockets
+      z += .055 * g(x, y, side * .29, -.20, .19, .06); // lower lids
+      z += .135 * g(x, y, side * .39, .05, .24, .18); // cheekbones
+      z -= .095 * g(x, y, side * .40, .31, .22, .22); // cheek hollows
+      z += .075 * g(x, y, side * .45, .72, .17, .20); // jaw corners
+      z += .10 * g(x, y, side * .09, .10, .075, .09); // nose wings
+      z -= .075 * g(x, y, side * .075, .17, .042, .028); // nostrils
     }
-    z+=.24*g(x,y,0,-.12,.095,.36); // narrow nose bridge
-    z+=.36*g(x,y,0,.17,.105,.115); // projecting nose tip
-    z+=.09*g(x,y,0,.43,.32,.22); // muzzle
-    const mouthY=.55+.045*(x/.3)**2;
-    z+=.075*g(x,y,0,mouthY-.035,.285,.035);
-    z+=.09*g(x,y,0,mouthY+.047,.265,.04);
-    z-=.09*g(x,y,0,mouthY,.3,.019);
-    z-=.035*g(x,y,0,.76,.28,.045);
-    z+=.17*g(x,y,0,.96,.33,.18); // broad chin plane
+
+    // Straight bridge, small tip and a defined philtrum.
+    z += .095 * g(x, y, 0, -.18, .075, .30);
+    z += .22 * g(x, y, 0, .105, .115, .13);
+    z += .08 * g(x, y, 0, .29, .12, .07);
+    z += .045 * g(x, y, 0, .41, .20, .08);
+
+    const mouthY = .54 + .035 * (x / .28) ** 2;
+    z += .060 * g(x, y, 0, mouthY - .035, .25, .035);
+    z += .072 * g(x, y, 0, mouthY + .055, .24, .040);
+    z -= .085 * g(x, y, 0, mouthY + .006, .27, .018);
+    z += .145 * g(x, y, 0, .91, .28, .18); // chin plane
+    z -= .035 * g(x, y, 0, .77, .25, .05); // under-lip hollow
     return z;
   }
-  const points=[];
-  // Uniform front sampling avoids the old bright egg-shaped outline.
-  for(let i=0;i<37000;i++) {
-    const y=-1.39+random()*2.61, x=(random()*2-1)*width(y);
-    const z=depth(x,y), e=.003;
-    let nx=-(depth(x+e,y)-depth(x-e,y))/(2*e), ny=-(depth(x,y+e)-depth(x,y-e))/(2*e), nz=1;
-    const length=Math.hypot(nx,ny,nz);nx/=length;ny/=length;nz/=length;
-    const eye=Math.abs(Math.abs(x)-.32)<.18 && Math.abs(y+.23)<.045*(1-((Math.abs(x)-.32)/.18)**2);
-    if(eye) continue;
-    points.push({x,y,z,nx,ny,nz,a:.55+random()*.45,lip:y>.47&&y<.67&&Math.abs(x)<.3,eye:false});
+
+  const points = [];
+  // Dense front surface. A little more density around the features keeps the face readable.
+  for (let i = 0; i < 38500; i++) {
+    const y = -1.41 + random() * 2.63;
+    const x = (random() * 2 - 1) * widthAt(y);
+    const z = depth(x, y);
+    const e = .003;
+    let nx = -(depth(x + e, y) - depth(x - e, y)) / (2 * e);
+    let ny = -(depth(x, y + e) - depth(x, y - e)) / (2 * e);
+    let nz = 1;
+    const length = Math.hypot(nx, ny, nz);
+    nx /= length; ny /= length; nz /= length;
+    const eye = Math.abs(Math.abs(x) - .29) < .16 && Math.abs(y + .275) < .038;
+    if (eye) continue;
+    const hairline = y < -1.08 && random() < .38;
+    points.push({x, y, z, nx, ny, nz, a: hairline ? .34 + random() * .28 : .52 + random() * .48, lip: y > .47 && y < .65, eye: false});
   }
-  // Back of skull adds volume during a turn, culled by its surface normal.
-  for(let i=0;i<10000;i++) {
-    const y=-1.38+random()*2.58, a=Math.PI/2+random()*Math.PI;
-    const x=Math.sin(a)*width(y),z=Math.cos(a)*.62;
-    points.push({x,y,z,nx:Math.sin(a),ny:0,nz:Math.cos(a),a:.45+random()*.3,eye:false});
+
+  // Rear skull volume makes the side profile read as a head instead of a flat mask.
+  for (let i = 0; i < 10500; i++) {
+    const y = -1.38 + random() * 2.58;
+    const angle = Math.PI / 2 + random() * Math.PI;
+    const x = Math.sin(angle) * widthAt(y);
+    const z = Math.cos(angle) * .59;
+    points.push({x, y, z, nx: Math.sin(angle), ny: 0, nz: Math.cos(angle), a: .40 + random() * .28, eye: false});
   }
-  // Small almond eyes: no floating luminous circles.
-  for(const side of [-1,1]) {
-    for(let i=0;i<850;i++) {
-      const u=random()*2-1,v=random()*2-1;
-      const x=side*.32+u*.174,y=-.23+v*.043*Math.sqrt(1-u*u),z=depth(x,-.23)+.035;
-      points.push({x,y,z,nx:0,ny:0,nz:1,a:.7+random()*.3,eye:true});
+
+  // Almond-shaped eyes sit beneath the brow, with a small inner highlight.
+  for (const side of [-1, 1]) {
+    for (let i = 0; i < 760; i++) {
+      const u = random() * 2 - 1;
+      const v = random() * 2 - 1;
+      const x = side * .29 + u * .155;
+      const y = -.275 + v * .038 * Math.sqrt(Math.max(0, 1 - u * u));
+      const z = depth(x, -.275) + .040;
+      points.push({x, y, z, nx: 0, ny: 0, nz: 1, a: .54 + random() * .32, eye: true});
     }
-    // Ear rims, head only, no neck or torso.
-    for(let i=0;i<950;i++) {
-      const a=random()*Math.PI*2,r=.8+random()*.2;
-      const x=side*(.765+Math.cos(a)*.072*r),y=-.03+Math.sin(a)*.22*r,z=.01+random()*.08;
-      points.push({x,y,z,nx:side*.5,ny:0,nz:.86,a:.35+random()*.45,eye:false});
+    // Smaller, flatter ear rims keep the focus on the face.
+    for (let i = 0; i < 720; i++) {
+      const angle = random() * Math.PI * 2;
+      const radius = .82 + random() * .18;
+      const x = side * (.70 + Math.cos(angle) * .065 * radius);
+      const y = -.02 + Math.sin(angle) * .19 * radius;
+      const z = .015 + random() * .065;
+      points.push({x, y, z, nx: side * .46, ny: 0, nz: .88, a: .30 + random() * .35, eye: false});
     }
   }
   return points;

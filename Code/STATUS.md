@@ -1,10 +1,10 @@
 # NEXO – aktueller Projektstand
 
-Stand: 19.09.2026 · Schritt 004
+Stand: 19.09.2026 · Schritt 005
 
 ## Tatsächlich implementiert
 - Startbarer HUD-Prototyp: `NEXO starten.cmd` öffnet `App/index.html` als Edge-App-Fenster. Kein eigenständiger EXE-Installer.
-- Dunkles HUD mit prozeduralem Partikelkopf aus 50.252 Punkten. Die neue Gesichtsform modelliert Augenhöhlen, Stirn, Nase, Wangen, Mund, Kiefer und Ohren als Punktoberfläche; die Referenz wurde nicht als Bild eingebettet.
+- Dunkles HUD mit prozeduralem Partikelkopf aus 51.441 Punkten. Die überarbeitete Gesichtsform hat eine schmalere Stirn, definierte Augenhöhlen, gerade Nase, hohe Wangen, kompaktere Kieferlinie und ein räumliches Seitenprofil; die Referenz wurde nicht als Bild eingebettet.
 - Kopf folgt dem Mauszeiger, Augen blinzeln, stumme Sprechanimation per Knopf.
 - Drei visuelle Modi: Bereit (Türkis), Fokus (Violett), Energie (Orange). Diese wechseln KEINE KI-Modelle.
 - Große Gesichtsansicht, Escape zum Verkleinern, Bewegung pausieren, Ansicht zentrieren.
@@ -26,7 +26,7 @@ Stand: 19.09.2026 · Schritt 004
 - Nach jedem abgeschlossenen Änderungs- oder Planungsschritt neue Obsidian-Notiz plus GitHub-Push.
 
 ## Überprüft
-- JavaScript-Syntax mit `node --check App/head.js` und `node --check App/app.js` erfolgreich.
+- JavaScript-Syntax mit `node --check App/head.js` und `node --check App/app.js` erfolgreich. Die Punktdarstellung nutzt runde Partikel statt quadratischer Blöcke.
 - Browseransicht visuell geprüft; Moduswechsel, Großansicht, Escape, Animation, Notiz-Speichermeldung und laufender Timer geprüft.
 - Windows-Startdatei ausgeführt. Das separate Edge-Fenster wurde nicht zusätzlich per UI inspiziert.
 - Noch kein Test der Notiz nach Browserneustart und kein vollständiger 25-Minuten-Durchlauf. Smartphone-Layout noch nicht visuell geprüft.
@@ -35,4 +35,4 @@ Stand: 19.09.2026 · Schritt 004
 - Obsidian-Einstieg: `Planung/NEXO-Obsidian-Plan/1 Aktueller Stand.md` und `Planung/NEXO-Obsidian-Plan/NEXO Planung und Ziel.md`.
 - Code liegt unter `Code/App`; Startdatei ist `Code/NEXO starten.cmd`.
 - Ältere Fachplanungen und die Mindmap enthalten Entwürfe. Lokale Modelle, Preise und Zeitpläne darin sind keine aktuelle Implementierungszusage.
-- Nächster möglicher Schritt: Schritt 005 nur nach Auftrag starten: Cloud-Core und Modelladapter planen/implementieren.
+- Nächster möglicher Schritt: Schritt 003 HUD stabilisieren oder nach Auftrag direkt den Cloud-Core und die Modelladapter planen.

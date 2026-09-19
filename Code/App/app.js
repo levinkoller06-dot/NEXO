@@ -27,6 +27,6 @@ function draw(now){requestAnimationFrame(draw);const dt=Math.min(40,now-lastTime
  for(const p of points){let py=p.y;if(p.eye)py=-.23+(py+.23)*(1-blink*.88);if(p.lip)py+=(p.y>.56?1:-1)*mouth;const px=p.x*co+p.z*sy,pz=-p.x*sy+p.z*co,yy=py*cr-pz*sx,zz=py*sx+pz*cr;
   const perspective=3.8/(3.8-zz),xx=cx+px*scale*perspective,y=cy+yy*scale*perspective;const nz=(-p.nx*sy+p.nz*co)*cr+p.ny*sx; if(nz<.025)continue; const nx=p.nx*co+p.nz*sy,ny=p.ny*cr-(-p.nx*sy+p.nz*co)*sx; const light=Math.max(0,-nx*.48-ny*.55+nz*.68); let alpha=p.a*(.12+.74*light)+Math.pow(1-nz,3)*.14; if(p.eye)alpha=.72;const bucket=Math.min(7,Math.floor(alpha*8));batches[bucket].push([xx,y,p.eye?1.05:(zz>.5?.85:.6)]);
  }
- for(let b=0;b<8;b++){ctx.fillStyle=`rgba(${rgb},${(b+1)/8})`;ctx.beginPath();for(const [x,y,r]of batches[b]){ctx.rect(x,y,r*1.3,r*1.3);}ctx.fill();}
+ for(let b=0;b<8;b++){ctx.fillStyle=`rgba(${rgb},${(b+1)/8})`;ctx.beginPath();for(const [x,y,r]of batches[b]){ctx.moveTo(x+r*.72,y);ctx.arc(x,y,r*.72,0,Math.PI*2);}ctx.fill();}
  const g=ctx.createRadialGradient(cx,cy,0,cx,cy,scale*1.5);g.addColorStop(0,`rgba(${rgb},.015)`);g.addColorStop(1,`rgba(${rgb},0)`);ctx.fillStyle=g;ctx.fillRect(0,0,w,h);
 }requestAnimationFrame(draw);log('Interface bereit');log('Partikelkern initialisiert');
