@@ -1,0 +1,44 @@
+# Zugangsdaten und lokale Konfiguration
+.env
+.env.*
+!.env.example
+*.key
+*.pem
+secrets/
+credentials/
+
+# Persönliche Laufzeitdaten
+*.db
+*.sqlite
+*.sqlite3
+logs/
+recordings/
+transcripts/
+memory/
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.pytest_cache/
+
+# JavaScript und App-Builds
+node_modules/
+dist/
+build/
+.next/
+
+# Obsidian – persönliche Fenster- und Plugin-Zustände
+.obsidian/workspace.json
+.obsidian/workspace-mobile.json
+.obsidian/plugins/
+.trash/
+
+# Betriebssystem und Editoren
+.DS_Store
+Thumbs.db
+desktop.ini
+.idea/
+.vscode/
+
