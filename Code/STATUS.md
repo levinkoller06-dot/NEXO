@@ -1,12 +1,12 @@
 # NEXO – aktueller Projektstand
 
-Stand: 19.09.2026 · Schritt 006
+Stand: 19.09.2026 · Schritt 007
 
 ## Tatsächlich implementiert
 - Startbarer HUD-Prototyp: `NEXO starten.cmd` öffnet `App/index.html` als Edge-App-Fenster. Kein eigenständiger EXE-Installer.
-- Dunkles HUD mit prozeduralem Partikelkopf aus 51.428 Punkten. Die Gesichtsform hat eine aufrechte statt abfallende Stirn, eine definierte Augenbrauenkante, gerade Nase, breitere und eckigere Kieferlinie sowie ein nach vorne stehendes statt zurückweichendes Kinn; das Seitenprofil wirkt dadurch deutlich menschlicher. Referenzfotos wurden nur zur Proportionsanpassung genutzt, nicht als Bild eingebettet.
-- Kopf folgt dem Mauszeiger, Augen blinzeln, stumme Sprechanimation per Knopf.
-- Drei visuelle Modi: Bereit (Türkis), Fokus (Violett), Energie (Orange). Diese wechseln KEINE KI-Modelle.
+- Dunkles HUD mit prozeduralem Partikelkopf aus 51.965 Punkten. Die Gesichtsform ist breiter, hat eine aufrechte statt abfallende Stirn, eine definierte Augenbrauenkante, gerade Nase, breitere und eckigere Kieferlinie sowie ein nach vorne stehendes statt zurückweichendes Kinn; das Seitenprofil wirkt dadurch deutlich menschlicher. Die Ohren haben jetzt eine C-förmige Helix, eine innere Falte, eine Concha-Mulde und ein rundes Ohrläppchen statt eines flachen Rings. Referenzfotos wurden nur zur Proportionsanpassung genutzt, nicht als Bild eingebettet.
+- Kopf folgt dem Mauszeiger, Augen blinzeln, stumme Sprechanimation per Knopf mit einer eng begrenzten Mundöffnung statt des ganzen Kiefers; beim Öffnen werden zwei angedeutete Zahnreihen sichtbar.
+- Drei visuelle Modi: Bereit (Türkis), Fokus (Violett), Energie (Orange). Der Wechsel lässt die Partikelwolke auseinanderstieben, bis kein Gesicht mehr erkennbar ist, und wieder zu einem Gesicht in der neuen Farbe zusammenfinden. Diese wechseln KEINE KI-Modelle.
 - Große Gesichtsansicht, Escape zum Verkleinern, Bewegung pausieren, Ansicht zentrieren.
 - Browserlokale Notiz, 25-Minuten-Timer solange das Fenster läuft, Uhr und Aktionsliste der aktuellen Sitzung.
 - FPS-Anzeige misst Zeichenrate, keine PC-Auslastung. Betriebssystem-Einstellung für reduzierte Bewegung wird beachtet; dann startet Bewegung pausiert.
@@ -28,7 +28,7 @@ Stand: 19.09.2026 · Schritt 006
 ## Überprüft
 - JavaScript-Syntax mit `node --check App/head.js` und `node --check App/app.js` erfolgreich. Die Punktdarstellung nutzt runde Partikel statt quadratischer Blöcke.
 - Browseransicht visuell geprüft; Moduswechsel, Großansicht, Escape, Animation, Notiz-Speichermeldung und laufender Timer geprüft.
-- Die überarbeitete Gesichtsform wurde per lokalem Testserver im Browser aus Front- und Seitenperspektive (auch bei erzwungener starker Kopfdrehung) geprüft, bevor sie übernommen wurde.
+- Die Gesichtsform, die Ohren, die enger begrenzte Mundöffnung mit Zähnen und der Explosions-/Wiederzusammensetzungs-Effekt beim Moduswechsel wurden per lokalem Testserver im Browser geprüft (Front-, Dreiviertel- und erzwungene Seitenansicht sowie ein erzwungener Zwischenstand der Moduswechsel-Animation).
 - Windows-Startdatei ausgeführt. Das separate Edge-Fenster wurde nicht zusätzlich per UI inspiziert.
 - Noch kein Test der Notiz nach Browserneustart und kein vollständiger 25-Minuten-Durchlauf. Smartphone-Layout noch nicht visuell geprüft.
 
@@ -36,4 +36,4 @@ Stand: 19.09.2026 · Schritt 006
 - Obsidian-Einstieg: `Planung/NEXO-Obsidian-Plan/1 Aktueller Stand.md` und `Planung/NEXO-Obsidian-Plan/NEXO Planung und Ziel.md`.
 - Code liegt unter `Code/App`; Startdatei ist `Code/NEXO starten.cmd`.
 - Ältere Fachplanungen und die Mindmap enthalten Entwürfe. Lokale Modelle, Preise und Zeitpläne darin sind keine aktuelle Implementierungszusage.
-- Nächster möglicher Schritt: Schritt 003 HUD stabilisieren oder nach Auftrag direkt den Cloud-Core und die Modelladapter planen.
+- Nächster möglicher Schritt: weiteres Nutzer-Feedback zur Gesichtsform/Animation einarbeiten, oder nach Auftrag direkt den Cloud-Core und die Modelladapter planen.
