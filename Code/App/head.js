@@ -60,7 +60,7 @@ function createHeadPoints() {
 
   const points = [];
   const headSampler = buildSampler(headTris);
-  const HEAD_POINTS = 48500;
+  const HEAD_POINTS = 62000;
   for (let i = 0; i < HEAD_POINTS; i++) {
     const idx = pickIndex(headSampler, random());
     const p = sampleTriangle(headTris, idx);
@@ -93,13 +93,22 @@ function createHeadPoints() {
   // (likely a modeled mouth-cavity opening), which our renderer culls as
   // back-facing and would otherwise show as a hole. Patch it with forward-facing
   // skin points so the closed mouth always reads as a solid surface.
+  function patchZ(x, y) {
+    const taper = Math.sqrt(Math.max(0, 1 - (x / .36) ** 2));
+    return (1.08 + .05 * Math.cos((y - .75) / .30 * Math.PI)) * taper;
+  }
   for (let i = 0; i < 1600; i++) {
     const x = (random() * 2 - 1) * .34;
     const y = .50 + random() * .50;
-    const taper = Math.sqrt(Math.max(0, 1 - (x / .36) ** 2));
-    const z = (1.08 + .05 * Math.cos((y - .75) / .30 * Math.PI)) * taper;
+    const z = patchZ(x, y);
+    const e = .004;
+    let nx = -(patchZ(x + e, y) - patchZ(x - e, y)) / (2 * e);
+    let ny = -(patchZ(x, y + e) - patchZ(x, y - e)) / (2 * e);
+    let nz = 1;
+    const len = Math.hypot(nx, ny, nz);
+    nx /= len; ny /= len; nz /= len;
     const lip = y > .55 && y < .95 && Math.abs(x) < .34;
-    points.push({ x, y, z, nx: 0, ny: 0, nz: 1, a: .45 + random() * .4, lip, eye: false });
+    points.push({ x, y, z, nx, ny, nz, a: .45 + random() * .4, lip, eye: false });
   }
 
   // Teeth: a small bright row sized to the mouth, hidden behind closed lips and

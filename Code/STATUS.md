@@ -1,11 +1,11 @@
 # NEXO – aktueller Projektstand
 
-Stand: 19.09.2026 · Schritt 009
+Stand: 19.09.2026 · Schritt 010
 
 ## Tatsächlich implementiert
 - Startbarer HUD-Prototyp: `NEXO starten.cmd` öffnet `App/index.html` als Edge-App-Fenster. Kein eigenständiger EXE-Installer.
-- Dunkles HUD mit einem Partikelkopf aus rund 51.260 Punkten, der von einem echten 3D-Kopfmodell abgetastet wird ("Male Head" von Alexander Antipov, CC BY, siehe `App/README.md`) statt aus einer selbst gebauten Formel. Dadurch wirken Stirn, Augenpartie, Nase, Ohren, Kieferlinie und Kinn deutlich anatomisch stimmiger als in den vorherigen, rein prozeduralen Versionen. Die Originaldatei liegt unter `App/reference/male_head.obj`, wird von der App selbst nicht geladen; `App/head-mesh-data.js` enthält die einmalig umgerechneten Daten.
-- Kopf folgt dem Mauszeiger, Augen blinzeln, stumme Sprechanimation per Knopf mit einer eng begrenzten Mundöffnung statt des ganzen Kiefers; beim Öffnen werden zwei angedeutete Zahnreihen sichtbar.
+- Dunkles HUD mit einem Partikelkopf aus rund 64.760 Punkten, der von einem echten 3D-Kopfmodell abgetastet wird ("Male Head" von Alexander Antipov, CC BY, siehe `App/README.md`) statt aus einer selbst gebauten Formel. Dadurch wirken Stirn, Augenpartie, Nase, Ohren, Kieferlinie und Kinn deutlich anatomisch stimmiger als in den vorherigen, rein prozeduralen Versionen. Ein tiefenbasierter Helligkeits-Boost lässt vorstehende Bereiche (Nase, Kinn, Lippen, Augäpfel) sichtbar heller aufleuchten als zurückliegende (Wangen, Augenhöhlen), damit auch aus der direkten Frontalansicht erkennbar ist, was vorne ist. Die Originaldatei liegt unter `App/reference/male_head.obj`, wird von der App selbst nicht geladen; `App/head-mesh-data.js` enthält die einmalig umgerechneten Daten.
+- Kopf folgt dem Mauszeiger, Augen blinzeln, stumme Sprechanimation per Knopf mit einer eng begrenzten Mundöffnung statt des ganzen Kiefers; beim Öffnen werden zwei angedeutete Zahnreihen sichtbar, bei geschlossenem Mund sind sie vollständig unsichtbar (nicht nur transparent).
 - Drei visuelle Modi: Bereit (Türkis), Fokus (Violett), Energie (Orange). Der Wechsel lässt die Partikelwolke auseinanderstieben, bis kein Gesicht mehr erkennbar ist, und wieder zu einem Gesicht in der neuen Farbe zusammenfinden. Diese wechseln KEINE KI-Modelle.
 - Große Gesichtsansicht, Escape zum Verkleinern, Bewegung pausieren, Ansicht zentrieren.
 - Browserlokale Notiz, 25-Minuten-Timer solange das Fenster läuft, Uhr und Aktionsliste der aktuellen Sitzung.
@@ -30,11 +30,13 @@ Stand: 19.09.2026 · Schritt 009
 - JavaScript-Syntax mit `node --check App/head.js`, `node --check App/app.js` und `node --check App/head-mesh-data.js` erfolgreich. Die Punktdarstellung nutzt runde Partikel statt quadratischer Blöcke.
 - Browseransicht visuell geprüft; Moduswechsel, Großansicht, Escape, Animation, Notiz-Speichermeldung und laufender Timer geprüft.
 - Die neue mesh-basierte Kopfform, Sprechanimation mit Zähnen und der Explosions-/Wiederzusammensetzungs-Effekt beim Moduswechsel wurden per lokalem Testserver im Browser geprüft (Front-, Dreiviertel- und erzwungene Seitenansicht sowie ein erzwungener Zwischenstand der Moduswechsel-Animation). Dabei drei mesh-bedingte Probleme gefunden und behoben: volle Kugelaugen ohne Lid-Maskierung, eine Lücke am Mund durch vom Betrachter wegzeigende Normalen im Quellmesh, und (Schritt 009, nach Nutzer-Meldung "Gesicht verkehrt herum") eine gespiegelte Händigkeit der Koordinatenumrechnung, die fast alle echten Oberflächen-Normalen invertiert hatte.
+- Schritt 010 (Zähne blitzten bei geschlossenem Mund durch, Nase/Augen aus der Frontalansicht kaum als vorne liegend erkennbar): auf Wunsch des Nutzers diesmal ohne Browser-Testserver geprüft, stattdessen mit einem eigenen kleinen Node-Skript, das die exakte Beleuchtungs-/Alpha-Formel aus `app.js` nachbildet und als PNG rendert (spart Tokens gegenüber Browser-Screenshots). Mehrere Helligkeits-/Radius-Formeln iterativ verglichen, bis Nase, Kinn und Lippen aus der Frontalansicht klar erkennbar aufleuchten.
 - Windows-Startdatei ausgeführt. Das separate Edge-Fenster wurde nicht zusätzlich per UI inspiziert.
 - Noch kein Test der Notiz nach Browserneustart und kein vollständiger 25-Minuten-Durchlauf. Smartphone-Layout noch nicht visuell geprüft.
+- Schritt 010 wurde NICHT im echten Browser/Canvas geprüft (nur per Node-Nachbildung der Formel) – der Nutzer testet direkt selbst in der laufenden App.
 
 ## Orientierung
 - Obsidian-Einstieg: `Planung/NEXO-Obsidian-Plan/1 Aktueller Stand.md` und `Planung/NEXO-Obsidian-Plan/NEXO Planung und Ziel.md`.
 - Code liegt unter `Code/App`; Startdatei ist `Code/NEXO starten.cmd`.
 - Ältere Fachplanungen und die Mindmap enthalten Entwürfe. Lokale Modelle, Preise und Zeitpläne darin sind keine aktuelle Implementierungszusage.
-- Nächster möglicher Schritt: weiteres Nutzer-Feedback zur Gesichtsform/Animation einarbeiten, oder nach Auftrag direkt den Cloud-Core und die Modelladapter planen.
+- Nächster möglicher Schritt: Nutzer-Test von Schritt 010 in der echten App abwarten (Zähne unsichtbar bei geschlossenem Mund, Nase/Kinn/Lippen aus der Frontalansicht klar erkennbar); danach nach Auftrag direkt den Cloud-Core und die Modelladapter planen.
