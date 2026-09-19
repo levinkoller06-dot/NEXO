@@ -20,4 +20,4 @@ Cloud-KI statt lokalem Modell. Später Anbieterwechsel auf Befehl bei gemeinsame
 Nach jedem abgeschlossenen Arbeits- oder Planungsschritt entsteht hier eine neue nummerierte Notiz im Ordner `Schritte`. Code und Notiz werden gemeinsam auf GitHub gesichert.
 
 > [!important] Maßgebliche Planung
-> Die ältere Fachplanung und die Mindmap enthalten Entwürfe. Für das aktuelle Ziel und die Reihenfolge gilt [[2 NEXO Ziel und Schrittplan]]; dieser Status beschreibt, was davon bereits umgesetzt ist.
+> Die ältere Fachplanung und die Mindmap enthalten Entwürfe. Für das aktuelle Ziel und die Reihenfolge gilt [[NEXO Planung und Ziel]]; dieser Status beschreibt, was davon bereits umgesetzt ist.

@@ -6,7 +6,7 @@ Datum: 19.09.2026 · Art: Planung
 Einen klaren Zielzustand und eine Schritt-für-Schritt-Reihenfolge erstellen, damit NEXO schrittweise gebaut werden kann und andere Modelle jederzeit den echten Funktionsstand verstehen.
 
 ## Änderungen
-- Neue Obsidian-Seite `2 NEXO Ziel und Schrittplan.md` erstellt.
+- Obsidian-Seite in `NEXO Planung und Ziel.md` umbenannt.
 - Zielbild als Cloud-Assistent mit austauschbarem Modell-Router festgehalten.
 - Aktuelle HUD-Funktionen und fehlende Funktionen getrennt beschrieben.
 - Schritte 000 bis 015 mit Ziel, Aufgaben und Abnahmekriterium definiert.

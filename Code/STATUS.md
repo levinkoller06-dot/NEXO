@@ -32,7 +32,7 @@ Stand: 19.09.2026 · Schritt 004
 - Noch kein Test der Notiz nach Browserneustart und kein vollständiger 25-Minuten-Durchlauf. Smartphone-Layout noch nicht visuell geprüft.
 
 ## Orientierung
-- Obsidian-Einstieg: `Planung/NEXO-Obsidian-Plan/1 Aktueller Stand.md` und `Planung/NEXO-Obsidian-Plan/2 NEXO Ziel und Schrittplan.md`.
+- Obsidian-Einstieg: `Planung/NEXO-Obsidian-Plan/1 Aktueller Stand.md` und `Planung/NEXO-Obsidian-Plan/NEXO Planung und Ziel.md`.
 - Code liegt unter `Code/App`; Startdatei ist `Code/NEXO starten.cmd`.
 - Ältere Fachplanungen und die Mindmap enthalten Entwürfe. Lokale Modelle, Preise und Zeitpläne darin sind keine aktuelle Implementierungszusage.
 - Nächster möglicher Schritt: Schritt 005 nur nach Auftrag starten: Cloud-Core und Modelladapter planen/implementieren.

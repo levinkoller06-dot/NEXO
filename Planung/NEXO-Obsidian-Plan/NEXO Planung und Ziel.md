@@ -1,4 +1,4 @@
-# NEXO – Ziel und genauer Schrittplan
+# NEXO Planung und Ziel
 
 Stand: 19.09.2026 · Schritt 004
 Zielbild: Cloud-basierte persönliche Assistenz für PC, Handy und Telefon
