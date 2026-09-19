@@ -58,14 +58,24 @@ function createHeadPoints() {
     return { x, y, z, nx, ny, nz };
   }
 
+  // How strongly a point near the mouth should move when it opens: 1 at the
+  // mouth's own center, fading smoothly to 0 at the edge of an oval instead of
+  // a hard-edged box — this is what makes the opening read as a mouth, not a
+  // square hole.
+  function mouthWeight(x, y) {
+    const dx = x / .32, dy = (y - .75) / .27;
+    const d2 = dx * dx + dy * dy;
+    return d2 < 1 ? (1 - d2) : 0;
+  }
+
   const points = [];
   const headSampler = buildSampler(headTris);
-  const HEAD_POINTS = 62000;
+  const HEAD_POINTS = 140000;
   for (let i = 0; i < HEAD_POINTS; i++) {
     const idx = pickIndex(headSampler, random());
     const p = sampleTriangle(headTris, idx);
     const hairline = p.y < -.95 && random() < .38;
-    const lip = p.y > .55 && p.y < .95 && Math.abs(p.x) < .34;
+    const lip = mouthWeight(p.x, p.y);
     points.push({ x: p.x, y: p.y, z: p.z, nx: p.nx, ny: p.ny, nz: p.nz, a: hairline ? .34 + random() * .28 : .52 + random() * .48, lip, eye: false });
   }
 
@@ -74,7 +84,7 @@ function createHeadPoints() {
   // own center — the part that would show through an open eyelid.
   const EYE_CX = .374, EYE_CY = -.025, EYE_RX = .165;
   const eyeSampler = buildSampler(eyeTris);
-  const EYE_POINTS = 900;
+  const EYE_POINTS = 2200;
   for (let i = 0; i < EYE_POINTS; i++) {
     let p, lx, ly, valid, tries = 0;
     do {
@@ -97,7 +107,7 @@ function createHeadPoints() {
     const taper = Math.sqrt(Math.max(0, 1 - (x / .36) ** 2));
     return (1.08 + .05 * Math.cos((y - .75) / .30 * Math.PI)) * taper;
   }
-  for (let i = 0; i < 1600; i++) {
+  for (let i = 0; i < 3600; i++) {
     const x = (random() * 2 - 1) * .34;
     const y = .50 + random() * .50;
     const z = patchZ(x, y);
@@ -107,17 +117,18 @@ function createHeadPoints() {
     let nz = 1;
     const len = Math.hypot(nx, ny, nz);
     nx /= len; ny /= len; nz /= len;
-    const lip = y > .55 && y < .95 && Math.abs(x) < .34;
+    const lip = mouthWeight(x, y);
     points.push({ x, y, z, nx, ny, nz, a: .45 + random() * .4, lip, eye: false });
   }
 
   // Teeth: a small bright row sized to the mouth, hidden behind closed lips and
   // only revealed once the speak animation parts them.
-  for (let i = 0; i < 260; i++) {
+  for (let i = 0; i < 420; i++) {
     const x = (random() * 2 - 1) * .26;
     const upper = i % 2 === 0;
-    const y = .75 + (upper ? -.045 : .045);
-    const z = 1.0;
+    const arc = .05 * (x / .26) ** 2; // follow the dental arch instead of a straight row
+    const y = .75 + arc + (upper ? -.045 : .045);
+    const z = 1.0 - .05 * (x / .26) ** 2;
     points.push({ x, y, z, nx: 0, ny: 0, nz: 1, a: .85 + random() * .15, eye: false, teeth: true, lowerTeeth: !upper });
   }
 
