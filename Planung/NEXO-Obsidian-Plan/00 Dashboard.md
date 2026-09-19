@@ -1,18 +1,21 @@
 ---
 projekt: NEXO
-status: Planung
-phase: 0
-ziel: Persönlicher lokaler KI-Assistent für PC und Handy
+status: HUD-Prototyp
+phase: 1
+ziel: Persönlicher Cloud-KI-Assistent für PC und Handy
 ---
 
 # NEXO Dashboard
+
+> [!important] Aktueller Einstieg
+> Lies zuerst [[13 Aktueller Stand]] und die neuen Notizen im Ordner `Schritte`. Die bisherigen Fachseiten sind ältere Planungsentwürfe; insbesondere die lokale KI-Architektur ist überholt.
 
 > [!summary] Ziel
 > NEXO nimmt wiederkehrende digitale Aufgaben ab, versteht Sprache, bedient freigegebene PC-Funktionen, verwaltet Termine und ist später auf PC und Handy als eine zusammenhängende Assistenz verfügbar.
 
 ## Leitentscheidungen
 
-- **Lokal zuerst:** Sprache, Gedächtnis und möglichst viele Befehle laufen auf dem Gaming-PC.
+- **Cloud-KI:** Modelle sollen über APIs angebunden und auf Befehl gewechselt werden. Noch keine KI implementiert.
 - **Ein Kern, mehrere Oberflächen:** Desktop-App, Handy-App und Telefonie greifen auf denselben Assistenten zu.
 - **Ereignisse statt Dauerüberwachung:** NEXO reagiert auf Kalenderänderungen, das Aktivierungswort und freigegebene Systemereignisse.
 - **Kontrolle bleibt beim Nutzer:** Kritische Aktionen benötigen immer eine Bestätigung.
@@ -36,13 +39,13 @@ ziel: Persönlicher lokaler KI-Assistent für PC und Handy
 
 ## Aktueller Meilenstein
 
-> [!todo] Phase 1 – PC-Grundversion
-> NEXO hört erst nach Aktivierung zu, beantwortet Fragen lokal und darf drei klar begrenzte Aktionen ausführen: Programme öffnen, Notizen anlegen und Termine als Entwurf vorbereiten.
+> [!todo] Phase 1 – HUD-Prototyp
+> Die Oberfläche mit Partikelkopf, Farbmodi, Großansicht, Browsernotiz und Timer ist gebaut. KI, Stimme und echte PC-/Kalenderaktionen fehlen noch.
 
 ## Definition von „fertig“ für Version 1
 
 - [ ] Aktivierungswort funktioniert zuverlässig im Zimmer.
-- [ ] Sprache wird lokal in Text umgewandelt.
+- [ ] Spracheingabe ist angebunden; Anbieter noch offen.
 - [ ] NEXO kann Programme öffnen und Dateien suchen.
 - [ ] NEXO kann einen Termin verstehen und vor dem Speichern bestätigen lassen.
 - [ ] Jede ausgeführte Aktion erscheint im Verlauf.

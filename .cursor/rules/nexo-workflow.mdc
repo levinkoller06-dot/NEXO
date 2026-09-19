@@ -1,0 +1,10 @@
+---
+description: NEXO Schrittprotokoll und GitHub-Synchronisierung für jede Projektänderung
+alwaysApply: true
+---
+
+Lies und befolge `AGENTS.md` im Repository-Hauptordner.
+Lies vor Arbeiten `STATUS.md` und die neueste Notiz in `Planung/NEXO-Obsidian-Plan/Schritte/`.
+Nach jedem abgeschlossenen Arbeits- oder Planungsschritt: neue nummerierte Obsidian-Schrittnotiz, aktuellen Status aktualisieren, Änderungen gemeinsam committen und pushen, Remote-Stand prüfen.
+Beispiel: `003 2026-09-20 Modellwahl.md` hält eine reine Modellentscheidung fest, ohne eine API-Anbindung als fertig zu behaupten.
+Neue Umsetzung nur auf Auftrag des Nutzers. Bestehende Push-Autorisierung gilt für beauftragte Projektänderungen.

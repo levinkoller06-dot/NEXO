@@ -4,11 +4,15 @@ NEXO ist ein geplanter persönlicher KI-Assistent für Windows und Smartphones. 
 
 ## Aktueller Stand
 
-Das Projekt befindet sich in der Planungsphase. Die Obsidian-Dokumentation liegt unter `Planung/NEXO-Obsidian-Plan`.
+Ein startbarer HUD-Prototyp ohne KI ist vorhanden. Mit `NEXO starten.cmd` öffnet sich die Oberfläche im Edge-App-Fenster.
+
+**Vor Weiterarbeit lesen:** [STATUS.md](STATUS.md) beschreibt, was funktioniert und was fehlt. [AGENTS.md](AGENTS.md) enthält die Arbeitsregeln für nachfolgende Modelle.
+
+Die Obsidian-Dokumentation liegt unter `Planung/NEXO-Obsidian-Plan`. Für jeden abgeschlossenen Arbeits- oder Planungsschritt wird dort unter `Schritte/` eine neue Notiz erstellt und zusammen mit den Änderungen auf GitHub gepusht.
 
 ## Leitprinzipien
 
-- lokal ausgeführte KI für geringe laufende Kosten und Datenschutz
+- Cloud-KI mit austauschbaren Modellen; noch keine API angebunden
 - ein gemeinsamer NEXO-Kern für Windows, Handy und Telefonie
 - klar begrenzte Werkzeuge statt uneingeschränktem PC-Zugriff
 - sichtbare Bestätigungen für kritische Aktionen
@@ -17,4 +21,3 @@ Das Projekt befindet sich in der Planungsphase. Die Obsidian-Dokumentation liegt
 ## Sicherheit
 
 API-Schlüssel, Zugangsdaten, lokale Datenbanken, Gesprächsverläufe und persönliche Kalenderdaten gehören nicht in dieses Repository.
-
