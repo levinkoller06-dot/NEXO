@@ -30,9 +30,9 @@ build/
 .next/
 
 # Obsidian – persönliche Fenster- und Plugin-Zustände
-.obsidian/workspace.json
-.obsidian/workspace-mobile.json
-.obsidian/plugins/
+**/.obsidian/workspace.json
+**/.obsidian/workspace-mobile.json
+**/.obsidian/plugins/
 .trash/
 
 # Betriebssystem und Editoren
@@ -41,4 +41,3 @@ Thumbs.db
 desktop.ini
 .idea/
 .vscode/
-
