@@ -18,6 +18,7 @@
 - Alle Projektdateien bleiben in diesem NEXO-Projektordner.
 
 ## Technischer Ausgangspunkt
-- `App/`: eigenständiger HTML/CSS/Canvas-JavaScript-Prototyp ohne KI.
-- `NEXO starten.cmd`: öffnet die Oberfläche im Edge-App-Fenster auf Windows.
-- Ziel: Cloud-Modelle mit austauschbaren Anbietern und gemeinsamem NEXO-Kontext. Noch nicht umgesetzt.
+- `App/`: HTML/CSS/Canvas-Oberfläche (HUD, Partikelkopf) plus `App/conversation.js` für echte Sprachgespräche.
+- `Server/server.js`: kleiner lokaler Node-Prozess, hält den KI-API-Key aus `Server/.env` (nie committen, siehe `.gitignore`) und leitet Anfragen an den KI-Anbieter weiter. Liefert auch die `App/`-Dateien aus.
+- `NEXO starten.cmd`: startet `Server/server.js` und öffnet die Oberfläche im Edge-App-Fenster über `http://localhost:4790/` (nicht mehr über `file://`).
+- Aktuell angebunden: OpenAI (Modell konfigurierbar über `Server/.env`, Standard `gpt-4o-mini`). Wechsel zwischen Anbietern/Modellen ist noch nicht umgesetzt, nur der erste feste Anbieter.

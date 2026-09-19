@@ -1,8 +1,13 @@
 # NEXO HUD
 
-Start: Im Projektordner auf **NEXO starten.cmd** doppelklicken. Die Oberfläche öffnet sich als eigenes Edge-App-Fenster. Alternativ `index.html` in einem modernen Browser öffnen. Keine Installation, kein API-Key und kein Server erforderlich.
+Start: Im Projektordner auf **NEXO starten.cmd** doppelklicken. Das startet einen kleinen lokalen Server (`Server/server.js`) und öffnet die Oberfläche als eigenes Edge-App-Fenster über `http://localhost:4790/`.
 
-Der Partikelkopf folgt dem Mauszeiger. Drei Farbmodi, eine Großansicht (Escape zum Verlassen), pausierbare Bewegung, eine stumme Sprechanimation, lokale Notizen und ein 25-Minuten-Timer sind enthalten. Es gibt keine KI, Kamera-, Mikrofon-, Kalender- oder Systemüberwachungsverbindung. FPS zeigt ausschließlich die echte Zeichenrate der Oberfläche.
+**Für das Sprachgespräch mit NEXO** wird ein eigener OpenAI-API-Key benötigt (auf platform.openai.com erstellt, mit hinterlegter Zahlungsmethode):
+1. `Server/.env.example` nach `Server/.env` kopieren.
+2. In `Server/.env` den eigenen Key bei `OPENAI_API_KEY=` eintragen.
+3. `Server/.env` wird nie committet (siehe `.gitignore`). Ohne gültigen Key läuft das übrige HUD trotzdem, nur das Gespräch schlägt fehl.
+
+Der Partikelkopf folgt dem Mauszeiger. Drei Farbmodi, eine Großansicht (Escape zum Verlassen), pausierbare Bewegung, ein echtes Sprachgespräch per Mikrofon (Mikrofon-Symbol unter dem Gesicht) mit live mitgeschriebenem Verlauf im HUD, eine zusätzliche stumme Sprechanimation zum Testen ohne Audio, lokale Notizen und ein 25-Minuten-Timer sind enthalten. Es gibt keine Kalenderanbindung, Kamera-Verfolgung oder Systemüberwachung. Die Spracherkennung läuft über die eingebaute Spracherkennung des Browsers (bei Edge/Chrome technisch bedingt über Microsoft/Google), die Antworten über die OpenAI-API. FPS zeigt ausschließlich die echte Zeichenrate der Oberfläche.
 
 Notizen bleiben im lokalen Browserprofil und werden nicht mit Obsidian synchronisiert. Der Timer läuft nur, solange das Fenster geöffnet bleibt. Bei deaktiviertem Browserspeicher zeigt die Oberfläche einen Fehler statt eines falschen Speichererfolgs.
 
