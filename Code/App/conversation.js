@@ -12,6 +12,14 @@ function setTalkStatus(text) {
   if (el) el.textContent = text;
 }
 
+function updateMicVisual() {
+  const btn = $('talk');
+  btn.classList.toggle('active', listening);
+  btn.classList.toggle('muted', !listening);
+  btn.setAttribute('aria-pressed', String(listening));
+  btn.setAttribute('aria-label', listening ? 'Mikrofon aktiv, klicken zum Stummschalten' : 'Mikrofon stummgeschaltet, klicken zum Sprechen');
+}
+
 function addTurn(role, text) {
   history.push({ role, content: text });
   const list = document.getElementById('transcript-log');
@@ -90,8 +98,7 @@ if (SpeechRecognitionImpl) {
     if (e.error === 'not-allowed' || e.error === 'service-not-allowed') {
       $('state').textContent = 'Mikrofon-Zugriff wurde verweigert.';
       listening = false;
-      $('talk').classList.remove('active');
-      $('talk').setAttribute('aria-pressed', 'false');
+      updateMicVisual();
       document.getElementById('mic-status').textContent = 'Aus';
       setTalkStatus('AUS');
     }
@@ -99,10 +106,10 @@ if (SpeechRecognitionImpl) {
   };
   recognition.onend = () => { if (listening && !suppressRestart) recognition.start(); };
 
+  updateMicVisual();
   $('talk').onclick = () => {
     listening = !listening;
-    $('talk').classList.toggle('active', listening);
-    $('talk').setAttribute('aria-pressed', String(listening));
+    updateMicVisual();
     document.getElementById('mic-status').textContent = listening ? 'Aktiv' : 'Aus';
     if (listening) {
       recognition.start();
@@ -121,5 +128,6 @@ if (SpeechRecognitionImpl) {
   const talkButton = $('talk');
   talkButton.disabled = true;
   talkButton.title = 'Spracherkennung wird von diesem Browser nicht unterstützt.';
+  updateMicVisual();
   document.getElementById('talk-hint').textContent = 'SPRACHERKENNUNG NICHT UNTERSTÜTZT · EDGE ODER CHROME NUTZEN';
 }
