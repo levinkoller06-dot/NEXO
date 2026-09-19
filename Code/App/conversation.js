@@ -63,9 +63,10 @@ async function sendToCore(text) {
       if (wasListening && listening) recognition.start();
     });
   } catch (err) {
-    $('state').textContent = 'Verbindung zu NEXO Core fehlgeschlagen.';
+    const short = String(err.message || err).split(/[.\n]/)[0].slice(0, 70);
+    $('state').textContent = 'Verbindung zu NEXO Core fehlgeschlagen: ' + short;
     setTalkStatus('FEHLER');
-    log('Gespräch fehlgeschlagen: ' + err.message);
+    log('Gespräch fehlgeschlagen: ' + short);
   }
 }
 
