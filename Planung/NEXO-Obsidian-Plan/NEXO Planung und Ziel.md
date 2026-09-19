@@ -1,7 +1,9 @@
 # NEXO Planung und Ziel
 
-Stand: 19.09.2026 · Schritt 004
+Stand: 20.09.2026 · Schritt 019 (Status abgeglichen, Zielplan bleibt bestehen)
 Zielbild: Cloud-basierte persönliche Assistenz für PC, Handy und Telefon
+
+Die Nummern 000–015 unten sind Planungsphasen; die fortlaufenden Arbeitsnotizen unter `Schritte/` haben eine eigene Nummerierung. Zum aktuellen Code und seinen Grenzen siehe [[1 Aktueller Stand]] und [[019 2026-09-20 Analyse der Aenderungen]].
 
 ## Das Ziel
 
@@ -26,22 +28,23 @@ Das Ziel ist eine Cloud-KI, die:
 - vor kritischen Aktionen nachfragt
 - jeden Schritt nachvollziehbar protokolliert
 
-## Was heute schon funktioniert
+## Was heute implementiert ist
 
-- Startbarer HUD-Prototyp unter Code/App
-- Partikelkopf aus Code, ohne Referenzbild als eingebettete Grafik
-- markantere Gesichtsform mit Augenhöhlen, Stirn, Nase, Wangen, Mund, Kiefer und Ohren
-- Mausverfolgung, Blinzeln und stumme Sprechanimation
-- Modi Bereit, Fokus und Energie mit unterschiedlichen Farben
-- Großansicht, Pause, Zentrieren, Browsernotiz und Fokus-Timer
+- HUD unter Code/App und lokaler Node-Server unter Code/Server.
+- Partikelkopf aus einem 3D-Modell mit 99.220 Punkten, Mausverfolgung, Blinzeln und Mundanimation während Sprachausgabe.
+- Browser-Spracherkennung, Browser-Sprachausgabe und Gesprächsverlauf in der Sitzung.
+- Feste Anbieterzuordnung: Fokus → Gemini; Bereit/Energie → OpenAI.
+- Erste Werkzeugaufrufe für gelistete Programme (öffnen/schließen), Websuche und Moduswechsel.
+- Großansicht, Pause, Zentrieren, Browsernotiz und Fokus-Timer.
+
+Diese Funktionen sind Prototypen. Die Prüfung in Schritt 019 dokumentiert offene Fehler bei Programmstart/-ende, API-Zugriffsschutz, Sprachablauf, Werkzeugrunden und URL-Verarbeitung. Sie sind noch nicht behoben.
 
 ## Was heute noch nicht funktioniert
 
-- kein KI-Modell und kein API-Key
-- kein Wechsel zwischen Claude, Astra oder Mistral
-- keine echte Mikrofonaufnahme oder Sprachausgabe
+- kein in der Cloud betriebener NEXO-Core mit Anmeldung und dauerhaftem Gedächtnis
+- kein allgemeiner Wechsel zwischen beliebigen Anbietern/Modellen; Claude, Astra und Mistral sind nicht integriert
 - keine Verbindung zu Obsidian, Kalender oder GitHub aus der App
-- keine PC-Steuerung
+- keine allgemeine PC-Steuerung über die vorhandenen gelisteten Werkzeuge hinaus
 - keine Handy-App, Push-Nachrichten oder Telefonie
 - Browsernotizen werden nicht als Obsidian-Dateien gespeichert
 
@@ -199,4 +202,4 @@ Fertig, wenn: Ein Fehler keine stillen PC-Aktionen verursacht und der komplette 
 
 ## Aktueller nächster Schritt
 
-Schritt 003 – HUD stabilisieren ist der nächste sinnvolle technische Schritt. Er beginnt erst nach deinem Auftrag. Der Modell-Router kommt danach; bis dahin ist NEXO bewusst ohne KI.
+Zuerst die vorhandenen Sprach- und PC-Werkzeuge anhand der Befunde aus [[019 2026-09-20 Analyse der Aenderungen]] stabilisieren. Die KI-Anbindung existiert inzwischen; ein allgemeiner Modell-Router und ein in der Cloud betriebener Core bleiben Ziele. Umsetzung beginnt erst nach ausdrücklichem Auftrag.
