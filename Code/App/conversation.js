@@ -63,6 +63,10 @@ async function sendToCore(text) {
     if (modelStatus) modelStatus.textContent = (data.provider === 'gemini' ? 'Gemini' : 'OpenAI') + ' verbunden';
     for (const call of data.toolLog || []) {
       log((call.result?.ok ? 'Aktion ausgeführt: ' : 'Aktion fehlgeschlagen: ') + (call.result?.message || call.name));
+      if (call.name === 'set_mode' && call.result?.ok && !transition) {
+        const targetButton = document.querySelector('[data-mode="' + call.result.mode + '"]');
+        if (targetButton) transition = { to: call.result.mode, button: targetButton, start: performance.now(), duration: 900, switched: false };
+      }
     }
     addTurn('assistant', data.reply || '…');
     const wasListening = listening;

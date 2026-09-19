@@ -35,28 +35,50 @@ const OPENAI_MODEL = process.env.OPENAI_MODEL || 'gpt-4o-mini';
 const GEMINI_MODEL = process.env.GEMINI_MODEL || 'gemini-3.6-flash';
 const APP_DIR = path.join(__dirname, '..', 'App');
 const TYPES = { '.html': 'text/html', '.js': 'text/javascript', '.css': 'text/css' };
-const SYSTEM_PROMPT = 'Du bist NEXO, ein persönlicher Assistent mit einem Partikel-Kopf-HUD auf dem Bildschirm. Antworte kurz, klar und auf Deutsch, in Sätzen, die sich gut laut vorlesen lassen. Du kannst ein Programm öffnen oder eine Websuche starten, wenn danach gefragt wird — nutze dafür die bereitgestellten Werkzeuge statt nur davon zu reden.';
+const SYSTEM_PROMPT = 'Du bist NEXO, ein persönlicher Assistent mit einem Partikel-Kopf-HUD auf dem Bildschirm. Antworte kurz, klar und auf Deutsch, in Sätzen, die sich gut laut vorlesen lassen. Du kannst ein Programm öffnen oder schließen, eine Websuche starten, oder den Betriebsmodus des HUD wechseln, wenn danach gefragt wird — nutze dafür die bereitgestellten Werkzeuge statt nur davon zu reden.';
 
 // Which provider handles a request, based on the HUD's active color mode.
 const MODE_PROVIDER = { standby: 'openai', focus: 'gemini', energy: 'openai' };
 
-// Fixed allow-list: the model can only ever launch one of these, never an
-// arbitrary path or command.
+// Fixed allow-list: the model can only ever launch/close one of these, never
+// an arbitrary path or command. `process` is the name Windows actually runs
+// it under (sometimes different from the launch exe, e.g. calc.exe starts
+// CalculatorApp.exe) — used for closing. `closable:false` keeps
+// explorer.exe off the close list: killing it takes down the taskbar/desktop
+// shell too, which isn't the kind of small, reversible action this is for.
 const ALLOWED_APPS = {
-  editor: 'notepad.exe',
-  rechner: 'calc.exe',
-  explorer: 'explorer.exe',
-  taskmanager: 'taskmgr.exe',
-  paint: 'mspaint.exe'
+  editor: { exe: 'notepad.exe', process: 'notepad.exe' },
+  rechner: { exe: 'calc.exe', process: 'CalculatorApp.exe' },
+  explorer: { exe: 'explorer.exe', process: 'explorer.exe', closable: false },
+  taskmanager: { exe: 'taskmgr.exe', process: 'Taskmgr.exe' },
+  paint: { exe: 'mspaint.exe', process: 'mspaint.exe' },
+  firefox: { exe: 'firefox.exe', process: 'firefox.exe' },
+  chrome: { exe: 'chrome.exe', process: 'chrome.exe' },
+  edge: { exe: 'msedge.exe', process: 'msedge.exe' },
+  word: { exe: 'winword.exe', process: 'WINWORD.EXE' },
+  excel: { exe: 'excel.exe', process: 'EXCEL.EXE' },
+  outlook: { exe: 'outlook.exe', process: 'OUTLOOK.EXE' },
+  spotify: { exe: 'spotify.exe', process: 'Spotify.exe' },
+  discord: { exe: 'discord.exe', process: 'Discord.exe' },
+  vscode: { exe: 'code.exe', process: 'Code.exe' },
+  terminal: { exe: 'wt.exe', process: 'WindowsTerminal.exe' }
 };
+const CLOSABLE_APPS = Object.keys(ALLOWED_APPS).filter(k => ALLOWED_APPS[k].closable !== false);
+const MODES = ['standby', 'focus', 'energy'];
 
 const TOOL_DEFS = [
   {
     name: 'open_app',
     description: 'Öffnet ein Programm aus einer festen, erlaubten Liste. Gültige Werte für "name": ' +
-      Object.keys(ALLOWED_APPS).map(k => `"${k}"`).join(', ') +
-      ' (editor=Texteditor/Notepad, rechner=Taschenrechner, explorer=Datei-Explorer, taskmanager=Task-Manager, paint=Paint).',
+      Object.keys(ALLOWED_APPS).map(k => `"${k}"`).join(', ') + '.',
     params: { name: { type: 'string', enum: Object.keys(ALLOWED_APPS) } },
+    required: ['name']
+  },
+  {
+    name: 'close_app',
+    description: 'Schließt ein laufendes Programm aus derselben festen Liste (außer "explorer", das bleibt geschützt). Gültige Werte für "name": ' +
+      CLOSABLE_APPS.map(k => `"${k}"`).join(', ') + '.',
+    params: { name: { type: 'string', enum: CLOSABLE_APPS } },
     required: ['name']
   },
   {
@@ -64,6 +86,12 @@ const TOOL_DEFS = [
     description: 'Öffnet eine Websuche zu einer Anfrage im Standardbrowser.',
     params: { query: { type: 'string' } },
     required: ['query']
+  },
+  {
+    name: 'set_mode',
+    description: 'Wechselt den Betriebsmodus des HUD. Gültige Werte: "standby" (Bereit), "focus" (Fokus), "energy" (Energie).',
+    params: { mode: { type: 'string', enum: MODES } },
+    required: ['mode']
   }
 ];
 
@@ -72,13 +100,30 @@ function launch(cmd, args) {
   child.unref();
 }
 
+function killByName(processName) {
+  return new Promise(resolve => {
+    const child = spawn('taskkill', ['/IM', processName, '/F'], { stdio: 'ignore' });
+    child.on('close', code => resolve(code === 0));
+    child.on('error', () => resolve(false));
+  });
+}
+
 async function executeTool(name, args) {
   if (name === 'open_app') {
     const key = String(args?.name || '').toLowerCase();
-    const exe = ALLOWED_APPS[key];
-    if (!exe) return { ok: false, message: `Unbekanntes Programm "${args?.name}".` };
-    try { launch(exe, []); return { ok: true, message: `${key} wurde geöffnet.`, app: key }; }
+    const app = ALLOWED_APPS[key];
+    if (!app) return { ok: false, message: `Unbekanntes Programm "${args?.name}".` };
+    try { launch(app.exe, []); return { ok: true, message: `${key} wurde geöffnet.`, app: key }; }
     catch (err) { return { ok: false, message: 'Konnte Programm nicht öffnen: ' + err.message }; }
+  }
+  if (name === 'close_app') {
+    const key = String(args?.name || '').toLowerCase();
+    const app = ALLOWED_APPS[key];
+    if (!app || app.closable === false) return { ok: false, message: `"${args?.name}" kann nicht geschlossen werden.` };
+    const closed = await killByName(app.process);
+    return closed
+      ? { ok: true, message: `${key} wurde geschlossen.`, app: key }
+      : { ok: false, message: `${key} war vermutlich nicht geöffnet.`, app: key };
   }
   if (name === 'web_search') {
     const query = String(args?.query || '').trim();
@@ -86,6 +131,13 @@ async function executeTool(name, args) {
     const url = 'https://www.google.com/search?q=' + encodeURIComponent(query);
     try { launch('explorer.exe', [url]); return { ok: true, message: `Suche nach "${query}" geöffnet.`, query }; }
     catch (err) { return { ok: false, message: 'Konnte Browser nicht öffnen: ' + err.message }; }
+  }
+  if (name === 'set_mode') {
+    const mode = String(args?.mode || '').toLowerCase();
+    if (!MODES.includes(mode)) return { ok: false, message: `Unbekannter Modus "${args?.mode}".` };
+    // The mode itself is a HUD/frontend concept, not something this process
+    // can change — it just confirms a valid mode; conversation.js applies it.
+    return { ok: true, message: `Modus ${mode} wird aktiviert.`, mode };
   }
   return { ok: false, message: 'Unbekanntes Werkzeug: ' + name };
 }

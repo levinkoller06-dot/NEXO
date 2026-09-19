@@ -3,7 +3,7 @@ const canvas = $('face'), ctx = canvas.getContext('2d');
 const modes = {standby:{name:'BEREIT',color:'#45e2d0',rgb:'69,226,208'},focus:{name:'FOKUS',color:'#aa8cff',rgb:'170,140,255'},energy:{name:'ENERGIE',color:'#ffb85e',rgb:'255,184,94'}};
 let mode='standby',paused=matchMedia('(prefers-reduced-motion: reduce)').matches,speaking=false,yaw=0,pitch=0,targetYaw=0,targetPitch=0,w=0,h=0,frames=0,lastFps=0,animTime=0,lastTime=0,transition=null;
 const EXPLODE_SCALE=.85;
-function log(message){const li=document.createElement('li');li.textContent=message;const small=document.createElement('small');small.textContent=new Date().toLocaleTimeString('de-CH');li.append(small);$('log').prepend(li);while($('log').children.length>5)$('log').lastChild.remove();}
+function log(message){}
 function updateTime(){$('clock').textContent=new Date().toLocaleTimeString('de-CH');$('date').textContent=new Date().toLocaleDateString('de-CH',{weekday:'long',day:'numeric',month:'long'});$('day').textContent=new Date().toLocaleDateString('de-CH',{day:'2-digit',month:'2-digit'});}updateTime();setInterval(updateTime,1000);
 document.querySelectorAll('[data-mode]').forEach(button=>button.onclick=()=>{if(transition)return;transition={to:button.dataset.mode,button,start:performance.now(),duration:900,switched:false};});
 function expand(){document.body.classList.toggle('expanded');$('expand').textContent=document.body.classList.contains('expanded')?'↙':'⛶';$('expand').setAttribute('aria-label',document.body.classList.contains('expanded')?'Gesichtsansicht verkleinern':'Gesicht vergrößern');resize();}
@@ -35,4 +35,4 @@ function draw(now){requestAnimationFrame(draw);const dt=Math.min(40,now-lastTime
  }
  for(let b=0;b<8;b++){ctx.fillStyle=`rgba(${rgb},${(b+1)/8})`;ctx.beginPath();for(const [x,y,r]of batches[b]){const d=r*1.44;ctx.rect(x-r*.72,y-r*.72,d,d);}ctx.fill();}
  const g=ctx.createRadialGradient(cx,cy,0,cx,cy,scale*1.5);g.addColorStop(0,`rgba(${rgb},.015)`);g.addColorStop(1,`rgba(${rgb},0)`);ctx.fillStyle=g;ctx.fillRect(0,0,w,h);
-}requestAnimationFrame(draw);log('Interface bereit');log('Partikelkern initialisiert');
+}requestAnimationFrame(draw);
