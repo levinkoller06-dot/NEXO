@@ -5,9 +5,16 @@
 // Which provider answers depends on the HUD's current color mode (see
 // MODE_PROVIDER below) — this is the first step toward the "switch models by
 // voice/mode" idea from the project notes, done the simple way for now.
+//
+// Both providers can call a small, fixed set of local tools (open an
+// allow-listed app, open a web search) — see ALLOWED_APPS/executeTool. This
+// is deliberately narrow: no arbitrary command execution, no confirmation
+// step (the user asked for these specific, reversible actions to run
+// immediately), nothing beyond opening things.
 const http = require('http');
 const fs = require('fs');
 const path = require('path');
+const { spawn } = require('child_process');
 
 function loadEnv(file) {
   if (!fs.existsSync(file)) return;
@@ -28,10 +35,60 @@ const OPENAI_MODEL = process.env.OPENAI_MODEL || 'gpt-4o-mini';
 const GEMINI_MODEL = process.env.GEMINI_MODEL || 'gemini-3.6-flash';
 const APP_DIR = path.join(__dirname, '..', 'App');
 const TYPES = { '.html': 'text/html', '.js': 'text/javascript', '.css': 'text/css' };
-const SYSTEM_PROMPT = 'Du bist NEXO, ein persönlicher Assistent mit einem Partikel-Kopf-HUD auf dem Bildschirm. Antworte kurz, klar und auf Deutsch, in Sätzen, die sich gut laut vorlesen lassen.';
+const SYSTEM_PROMPT = 'Du bist NEXO, ein persönlicher Assistent mit einem Partikel-Kopf-HUD auf dem Bildschirm. Antworte kurz, klar und auf Deutsch, in Sätzen, die sich gut laut vorlesen lassen. Du kannst ein Programm öffnen oder eine Websuche starten, wenn danach gefragt wird — nutze dafür die bereitgestellten Werkzeuge statt nur davon zu reden.';
 
 // Which provider handles a request, based on the HUD's active color mode.
 const MODE_PROVIDER = { standby: 'openai', focus: 'gemini', energy: 'openai' };
+
+// Fixed allow-list: the model can only ever launch one of these, never an
+// arbitrary path or command.
+const ALLOWED_APPS = {
+  editor: 'notepad.exe',
+  rechner: 'calc.exe',
+  explorer: 'explorer.exe',
+  taskmanager: 'taskmgr.exe',
+  paint: 'mspaint.exe'
+};
+
+const TOOL_DEFS = [
+  {
+    name: 'open_app',
+    description: 'Öffnet ein Programm aus einer festen, erlaubten Liste. Gültige Werte für "name": ' +
+      Object.keys(ALLOWED_APPS).map(k => `"${k}"`).join(', ') +
+      ' (editor=Texteditor/Notepad, rechner=Taschenrechner, explorer=Datei-Explorer, taskmanager=Task-Manager, paint=Paint).',
+    params: { name: { type: 'string', enum: Object.keys(ALLOWED_APPS) } },
+    required: ['name']
+  },
+  {
+    name: 'web_search',
+    description: 'Öffnet eine Websuche zu einer Anfrage im Standardbrowser.',
+    params: { query: { type: 'string' } },
+    required: ['query']
+  }
+];
+
+function launch(cmd, args) {
+  const child = spawn(cmd, args, { detached: true, stdio: 'ignore' });
+  child.unref();
+}
+
+async function executeTool(name, args) {
+  if (name === 'open_app') {
+    const key = String(args?.name || '').toLowerCase();
+    const exe = ALLOWED_APPS[key];
+    if (!exe) return { ok: false, message: `Unbekanntes Programm "${args?.name}".` };
+    try { launch(exe, []); return { ok: true, message: `${key} wurde geöffnet.`, app: key }; }
+    catch (err) { return { ok: false, message: 'Konnte Programm nicht öffnen: ' + err.message }; }
+  }
+  if (name === 'web_search') {
+    const query = String(args?.query || '').trim();
+    if (!query) return { ok: false, message: 'Keine Suchanfrage angegeben.' };
+    const url = 'https://www.google.com/search?q=' + encodeURIComponent(query);
+    try { launch('explorer.exe', [url]); return { ok: true, message: `Suche nach "${query}" geöffnet.`, query }; }
+    catch (err) { return { ok: false, message: 'Konnte Browser nicht öffnen: ' + err.message }; }
+  }
+  return { ok: false, message: 'Unbekanntes Werkzeug: ' + name };
+}
 
 function serveStatic(req, res) {
   const urlPath = req.url === '/' ? '/index.html' : req.url;
@@ -47,43 +104,84 @@ function serveStatic(req, res) {
 
 async function callOpenAI(messages) {
   if (!process.env.OPENAI_API_KEY) throw new Error('Kein OPENAI_API_KEY in Code/Server/.env gefunden.');
-  const apiRes = await fetch('https://api.openai.com/v1/chat/completions', {
-    method: 'POST',
-    headers: {
-      'content-type': 'application/json',
-      'authorization': 'Bearer ' + process.env.OPENAI_API_KEY
-    },
-    body: JSON.stringify({
-      model: OPENAI_MODEL,
-      max_tokens: 400,
-      messages: [{ role: 'system', content: SYSTEM_PROMPT }, ...messages]
-    })
-  });
-  const data = await apiRes.json();
-  if (!apiRes.ok) throw new Error(data.error?.message || 'OpenAI-API-Fehler.');
-  return data.choices?.[0]?.message?.content || '';
+  const tools = TOOL_DEFS.map(t => ({
+    type: 'function',
+    function: { name: t.name, description: t.description, parameters: { type: 'object', properties: t.params, required: t.required } }
+  }));
+  const baseMessages = [{ role: 'system', content: SYSTEM_PROMPT }, ...messages];
+  async function request(msgs) {
+    const apiRes = await fetch('https://api.openai.com/v1/chat/completions', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', 'authorization': 'Bearer ' + process.env.OPENAI_API_KEY },
+      body: JSON.stringify({ model: OPENAI_MODEL, max_tokens: 400, messages: msgs, tools })
+    });
+    const data = await apiRes.json();
+    if (!apiRes.ok) throw new Error(data.error?.message || 'OpenAI-API-Fehler.');
+    return data;
+  }
+  let data = await request(baseMessages);
+  let msg = data.choices?.[0]?.message;
+  const toolLog = [];
+  if (msg?.tool_calls?.length) {
+    const toolReplies = [];
+    for (const call of msg.tool_calls) {
+      let args = {};
+      try { args = JSON.parse(call.function.arguments || '{}'); } catch { /* keep {} */ }
+      const result = await executeTool(call.function.name, args);
+      toolLog.push({ name: call.function.name, args, result });
+      toolReplies.push({ role: 'tool', tool_call_id: call.id, content: JSON.stringify(result) });
+    }
+    data = await request([...baseMessages, msg, ...toolReplies]);
+    msg = data.choices?.[0]?.message;
+  }
+  return { reply: msg?.content || '', toolLog };
 }
 
 async function callGemini(messages) {
   if (!process.env.GEMINI_API_KEY) throw new Error('Kein GEMINI_API_KEY in Code/Server/.env gefunden.');
-  const contents = messages.map(m => ({
-    role: m.role === 'assistant' ? 'model' : 'user',
-    parts: [{ text: m.content }]
+  const contents = messages.map(m => ({ role: m.role === 'assistant' ? 'model' : 'user', parts: [{ text: m.content }] }));
+  const functionDeclarations = TOOL_DEFS.map(t => ({
+    name: t.name,
+    description: t.description,
+    parameters: {
+      type: 'OBJECT',
+      properties: Object.fromEntries(Object.entries(t.params).map(([k, v]) => [k, { type: v.type.toUpperCase(), ...(v.enum ? { enum: v.enum } : {}) }])),
+      required: t.required
+    }
   }));
   const url = `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent?key=${process.env.GEMINI_API_KEY}`;
-  const apiRes = await fetch(url, {
-    method: 'POST',
-    headers: { 'content-type': 'application/json' },
-    body: JSON.stringify({
-      contents,
-      systemInstruction: { parts: [{ text: SYSTEM_PROMPT }] },
-      generationConfig: { maxOutputTokens: 400 }
-    })
-  });
-  const data = await apiRes.json();
-  if (!apiRes.ok) throw new Error(data.error?.message || 'Gemini-API-Fehler.');
-  const parts = data.candidates?.[0]?.content?.parts || [];
-  return parts.map(p => p.text || '').join('');
+  async function request(currentContents) {
+    const apiRes = await fetch(url, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        contents: currentContents,
+        systemInstruction: { parts: [{ text: SYSTEM_PROMPT }] },
+        tools: [{ functionDeclarations }],
+        generationConfig: { maxOutputTokens: 400 }
+      })
+    });
+    const data = await apiRes.json();
+    if (!apiRes.ok) throw new Error(data.error?.message || 'Gemini-API-Fehler.');
+    return data;
+  }
+  let data = await request(contents);
+  let parts = data.candidates?.[0]?.content?.parts || [];
+  const toolLog = [];
+  const fnCall = parts.find(p => p.functionCall);
+  if (fnCall) {
+    const { name, args } = fnCall.functionCall;
+    const result = await executeTool(name, args || {});
+    toolLog.push({ name, args: args || {}, result });
+    // Push the original part back verbatim (not just {functionCall}) — newer
+    // Gemini models attach a thoughtSignature alongside functionCall that
+    // must round-trip unchanged or the API rejects the follow-up request.
+    contents.push({ role: 'model', parts: [fnCall] });
+    contents.push({ role: 'user', parts: [{ functionResponse: { name, response: result } }] });
+    data = await request(contents);
+    parts = data.candidates?.[0]?.content?.parts || [];
+  }
+  return { reply: parts.map(p => p.text || '').join(''), toolLog };
 }
 
 function handleChat(req, res) {
@@ -101,9 +199,9 @@ function handleChat(req, res) {
     const mode = MODE_PROVIDER[parsed?.mode] ? parsed.mode : 'standby';
     const provider = MODE_PROVIDER[mode];
     try {
-      const reply = provider === 'gemini' ? await callGemini(messages) : await callOpenAI(messages);
+      const { reply, toolLog } = provider === 'gemini' ? await callGemini(messages) : await callOpenAI(messages);
       res.writeHead(200, { 'Content-Type': 'application/json' });
-      res.end(JSON.stringify({ reply, provider }));
+      res.end(JSON.stringify({ reply, provider, toolLog }));
     } catch (err) {
       res.writeHead(502, { 'Content-Type': 'application/json' });
       res.end(JSON.stringify({ error: err.message, provider }));
@@ -119,7 +217,8 @@ http.createServer((req, res) => {
       ok: true,
       modeProvider: MODE_PROVIDER,
       openai: { hasKey: !!process.env.OPENAI_API_KEY, model: OPENAI_MODEL },
-      gemini: { hasKey: !!process.env.GEMINI_API_KEY, model: GEMINI_MODEL }
+      gemini: { hasKey: !!process.env.GEMINI_API_KEY, model: GEMINI_MODEL },
+      allowedApps: Object.keys(ALLOWED_APPS)
     }));
     return;
   }

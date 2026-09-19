@@ -61,6 +61,9 @@ async function sendToCore(text) {
     if (!res.ok || data.error) throw new Error(data.error || ('Serverfehler ' + res.status));
     const modelStatus = document.getElementById('model-status');
     if (modelStatus) modelStatus.textContent = (data.provider === 'gemini' ? 'Gemini' : 'OpenAI') + ' verbunden';
+    for (const call of data.toolLog || []) {
+      log((call.result?.ok ? 'Aktion ausgeführt: ' : 'Aktion fehlgeschlagen: ') + (call.result?.message || call.name));
+    }
     addTurn('assistant', data.reply || '…');
     const wasListening = listening;
     if (wasListening) { suppressRestart = true; recognition.stop(); }
