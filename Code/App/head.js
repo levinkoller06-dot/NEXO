@@ -70,7 +70,7 @@ function createHeadPoints() {
 
   const points = [];
   const headSampler = buildSampler(headTris);
-  const HEAD_POINTS = 140000;
+  const HEAD_POINTS = 95000;
   for (let i = 0; i < HEAD_POINTS; i++) {
     const idx = pickIndex(headSampler, random());
     const p = sampleTriangle(headTris, idx);
@@ -84,7 +84,7 @@ function createHeadPoints() {
   // own center — the part that would show through an open eyelid.
   const EYE_CX = .374, EYE_CY = -.025, EYE_RX = .165;
   const eyeSampler = buildSampler(eyeTris);
-  const EYE_POINTS = 2200;
+  const EYE_POINTS = 1500;
   for (let i = 0; i < EYE_POINTS; i++) {
     let p, lx, ly, valid, tries = 0;
     do {
@@ -107,7 +107,7 @@ function createHeadPoints() {
     const taper = Math.sqrt(Math.max(0, 1 - (x / .36) ** 2));
     return (1.08 + .05 * Math.cos((y - .75) / .30 * Math.PI)) * taper;
   }
-  for (let i = 0; i < 3600; i++) {
+  for (let i = 0; i < 2400; i++) {
     const x = (random() * 2 - 1) * .34;
     const y = .50 + random() * .50;
     const z = patchZ(x, y);
@@ -123,7 +123,7 @@ function createHeadPoints() {
 
   // Teeth: a small bright row sized to the mouth, hidden behind closed lips and
   // only revealed once the speak animation parts them.
-  for (let i = 0; i < 420; i++) {
+  for (let i = 0; i < 320; i++) {
     const x = (random() * 2 - 1) * .26;
     const upper = i % 2 === 0;
     const arc = .05 * (x / .26) ** 2; // follow the dental arch instead of a straight row
