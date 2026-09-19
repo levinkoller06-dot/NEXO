@@ -47,12 +47,12 @@ async function sendToCore(text) {
     const res = await fetch('/api/chat', {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ messages: history.map(h => ({ role: h.role, content: h.content })) })
+      body: JSON.stringify({ mode, messages: history.map(h => ({ role: h.role, content: h.content })) })
     });
     const data = await res.json();
     if (!res.ok || data.error) throw new Error(data.error || ('Serverfehler ' + res.status));
     const modelStatus = document.getElementById('model-status');
-    if (modelStatus) modelStatus.textContent = 'OpenAI verbunden';
+    if (modelStatus) modelStatus.textContent = (data.provider === 'gemini' ? 'Gemini' : 'OpenAI') + ' verbunden';
     addTurn('assistant', data.reply || '…');
     const wasListening = listening;
     if (wasListening) { suppressRestart = true; recognition.stop(); }

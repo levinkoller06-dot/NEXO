@@ -2,12 +2,13 @@
 
 Start: Im Projektordner auf **NEXO starten.cmd** doppelklicken. Das startet einen kleinen lokalen Server (`Server/server.js`) und öffnet die Oberfläche als eigenes Edge-App-Fenster über `http://localhost:4790/`.
 
-**Für das Sprachgespräch mit NEXO** wird ein eigener OpenAI-API-Key benötigt (auf platform.openai.com erstellt, mit hinterlegter Zahlungsmethode):
+**Für das Sprachgespräch mit NEXO** werden eigene API-Keys benötigt – welcher Anbieter antwortet, hängt vom Betriebsmodus ab (siehe unten):
 1. `Server/.env.example` nach `Server/.env` kopieren.
-2. In `Server/.env` den eigenen Key bei `OPENAI_API_KEY=` eintragen.
-3. `Server/.env` wird nie committet (siehe `.gitignore`). Ohne gültigen Key läuft das übrige HUD trotzdem, nur das Gespräch schlägt fehl.
+2. `OPENAI_API_KEY=` mit einem Key von platform.openai.com (mit hinterlegter Zahlungsmethode) füllen, für die Modi Bereit/Energie.
+3. `GEMINI_API_KEY=` mit einem Key von aistudio.google.com/apikey füllen, für den Modus Fokus.
+4. `Server/.env` wird nie committet (siehe `.gitignore`). Ohne gültigen Key für den jeweils aktiven Modus läuft das übrige HUD trotzdem, nur das Gespräch in diesem Modus schlägt fehl.
 
-Der Partikelkopf folgt dem Mauszeiger. Drei Farbmodi, eine Großansicht (Escape zum Verlassen), pausierbare Bewegung, ein echtes Sprachgespräch per Mikrofon (Mikrofon-Symbol unter dem Gesicht) mit live mitgeschriebenem Verlauf im HUD, eine zusätzliche stumme Sprechanimation zum Testen ohne Audio, lokale Notizen und ein 25-Minuten-Timer sind enthalten. Es gibt keine Kalenderanbindung, Kamera-Verfolgung oder Systemüberwachung. Die Spracherkennung läuft über die eingebaute Spracherkennung des Browsers (bei Edge/Chrome technisch bedingt über Microsoft/Google), die Antworten über die OpenAI-API. FPS zeigt ausschließlich die echte Zeichenrate der Oberfläche.
+Der Partikelkopf folgt dem Mauszeiger. Drei Farbmodi, eine Großansicht (Escape zum Verlassen), pausierbare Bewegung, ein echtes Sprachgespräch per Mikrofon (Mikrofon-Symbol unter dem Gesicht) mit live mitgeschriebenem Verlauf im HUD, eine zusätzliche stumme Sprechanimation zum Testen ohne Audio, lokale Notizen und ein 25-Minuten-Timer sind enthalten. Es gibt keine Kalenderanbindung, Kamera-Verfolgung oder Systemüberwachung. Die Spracherkennung läuft über die eingebaute Spracherkennung des Browsers (bei Edge/Chrome technisch bedingt über Microsoft/Google). Die Antworten kommen je nach Betriebsmodus von **Google Gemini** (Modus Fokus) oder **OpenAI** (Modi Bereit/Energie) – ein erster Schritt in Richtung eines späteren, per Sprachbefehl steuerbaren Anbieterwechsels. Welcher Modus welchen Anbieter nutzt, steht in `Server/server.js` (`MODE_PROVIDER`). FPS zeigt ausschließlich die echte Zeichenrate der Oberfläche.
 
 Notizen bleiben im lokalen Browserprofil und werden nicht mit Obsidian synchronisiert. Der Timer läuft nur, solange das Fenster geöffnet bleibt. Bei deaktiviertem Browserspeicher zeigt die Oberfläche einen Fehler statt eines falschen Speichererfolgs.
 
