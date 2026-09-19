@@ -1,10 +1,10 @@
 # NEXO – aktueller Projektstand
 
-Stand: 19.09.2026 · Schritt 005
+Stand: 19.09.2026 · Schritt 006
 
 ## Tatsächlich implementiert
 - Startbarer HUD-Prototyp: `NEXO starten.cmd` öffnet `App/index.html` als Edge-App-Fenster. Kein eigenständiger EXE-Installer.
-- Dunkles HUD mit prozeduralem Partikelkopf aus 51.441 Punkten. Die überarbeitete Gesichtsform hat eine schmalere Stirn, definierte Augenhöhlen, gerade Nase, hohe Wangen, kompaktere Kieferlinie und ein räumliches Seitenprofil; die Referenz wurde nicht als Bild eingebettet.
+- Dunkles HUD mit prozeduralem Partikelkopf aus 51.428 Punkten. Die Gesichtsform hat eine aufrechte statt abfallende Stirn, eine definierte Augenbrauenkante, gerade Nase, breitere und eckigere Kieferlinie sowie ein nach vorne stehendes statt zurückweichendes Kinn; das Seitenprofil wirkt dadurch deutlich menschlicher. Referenzfotos wurden nur zur Proportionsanpassung genutzt, nicht als Bild eingebettet.
 - Kopf folgt dem Mauszeiger, Augen blinzeln, stumme Sprechanimation per Knopf.
 - Drei visuelle Modi: Bereit (Türkis), Fokus (Violett), Energie (Orange). Diese wechseln KEINE KI-Modelle.
 - Große Gesichtsansicht, Escape zum Verkleinern, Bewegung pausieren, Ansicht zentrieren.
@@ -28,6 +28,7 @@ Stand: 19.09.2026 · Schritt 005
 ## Überprüft
 - JavaScript-Syntax mit `node --check App/head.js` und `node --check App/app.js` erfolgreich. Die Punktdarstellung nutzt runde Partikel statt quadratischer Blöcke.
 - Browseransicht visuell geprüft; Moduswechsel, Großansicht, Escape, Animation, Notiz-Speichermeldung und laufender Timer geprüft.
+- Die überarbeitete Gesichtsform wurde per lokalem Testserver im Browser aus Front- und Seitenperspektive (auch bei erzwungener starker Kopfdrehung) geprüft, bevor sie übernommen wurde.
 - Windows-Startdatei ausgeführt. Das separate Edge-Fenster wurde nicht zusätzlich per UI inspiziert.
 - Noch kein Test der Notiz nach Browserneustart und kein vollständiger 25-Minuten-Durchlauf. Smartphone-Layout noch nicht visuell geprüft.
 

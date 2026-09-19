@@ -5,11 +5,12 @@ function createHeadPoints() {
   const random = () => ((seed = seed * 16807 % 2147483647) - 1) / 2147483646;
   const g = (x, y, cx, cy, sx, sy) => Math.exp(-(((x - cx) / sx) ** 2 + ((y - cy) / sy) ** 2));
 
-  // A tapered forehead, broad cheek line and compact jaw give the head a human silhouette.
+  // A narrower forehead, straighter jaw line and squared, forward chin give the head
+  // a more angular, masculine silhouette (short-hair fade, defined jaw reference).
   const contour = [
-    [-1.42, .18], [-1.35, .37], [-1.18, .53], [-.96, .63], [-.70, .68],
-    [-.42, .69], [-.12, .68], [.16, .65], [.42, .59], [.68, .49],
-    [.88, .38], [1.06, .27], [1.18, .15], [1.24, .05]
+    [-1.42, .16], [-1.35, .36], [-1.18, .52], [-.96, .62], [-.70, .665],
+    [-.42, .675], [-.12, .665], [.16, .64], [.38, .60], [.55, .555],
+    [.70, .49], [.82, .41], [.92, .34], [1.02, .27], [1.12, .22], [1.24, .19]
   ];
   function widthAt(y) {
     if (y <= contour[0][0] || y >= contour[contour.length - 1][0]) return .04;
@@ -22,36 +23,59 @@ function createHeadPoints() {
     }
     return .04;
   }
+
+  // Forward projection along the midline: shallow at the crown, rising through the
+  // brow and nose, then staying forward through a squared, un-receded chin instead
+  // of tapering back — this is what turns the side profile from sloped to upright.
+  const depthProfile = [
+    [-1.42, .30], [-1.05, .365], [-.75, .38], [-.42, .395],
+    [-.10, .40], [.20, .385], [.55, .375], [.77, .375],
+    [.95, .405], [1.10, .35], [1.24, .25]
+  ];
+  function baseDepth(y) {
+    if (y <= depthProfile[0][0]) return depthProfile[0][1];
+    if (y >= depthProfile[depthProfile.length - 1][0]) return depthProfile[depthProfile.length - 1][1];
+    for (let i = 1; i < depthProfile.length; i++) {
+      const [ay, ad] = depthProfile[i - 1], [by, bd] = depthProfile[i];
+      if (y <= by) {
+        const t = (y - ay) / (by - ay);
+        return ad + (bd - ad) * t;
+      }
+    }
+    return depthProfile[depthProfile.length - 1][1];
+  }
+
   function depth(x, y) {
     const half = Math.max(.04, widthAt(y));
     const edge = Math.min(.999, Math.abs(x / half));
-    let z = .47 * Math.sqrt(Math.max(0, 1 - edge * edge));
+    let z = baseDepth(y) * Math.sqrt(Math.max(0, 1 - edge * edge));
 
-    // Skull, brow and eye sockets.
-    z += .075 * g(x, y, 0, -1.05, .52, .42);
+    // Skull, brow ridge and eye sockets. A narrower, less forward-sloped forehead
+    // with a distinct brow shelf reads as upright rather than sloped.
+    z += .035 * g(x, y, 0, -1.05, .5, .4);
     for (const side of [-1, 1]) {
-      z += .115 * g(x, y, side * .30, -.42, .26, .075); // brows
+      z += .125 * g(x, y, side * .30, -.42, .26, .07); // brows (sharper shelf)
       z -= .155 * g(x, y, side * .29, -.275, .19, .105); // eye sockets
       z += .055 * g(x, y, side * .29, -.20, .19, .06); // lower lids
       z += .135 * g(x, y, side * .39, .05, .24, .18); // cheekbones
-      z -= .095 * g(x, y, side * .40, .31, .22, .22); // cheek hollows
-      z += .075 * g(x, y, side * .45, .72, .17, .20); // jaw corners
+      z -= .085 * g(x, y, side * .40, .31, .22, .22); // cheek hollows
+      z += .105 * g(x, y, side * .47, .70, .18, .21); // jaw corners (more angular)
       z += .10 * g(x, y, side * .09, .10, .075, .09); // nose wings
       z -= .075 * g(x, y, side * .075, .17, .042, .028); // nostrils
     }
 
-    // Straight bridge, small tip and a defined philtrum.
-    z += .095 * g(x, y, 0, -.18, .075, .30);
-    z += .22 * g(x, y, 0, .105, .115, .13);
-    z += .08 * g(x, y, 0, .29, .12, .07);
-    z += .045 * g(x, y, 0, .41, .20, .08);
+    // Straight bridge, moderate tip and a defined philtrum.
+    z += .085 * g(x, y, 0, -.18, .075, .30);
+    z += .155 * g(x, y, 0, .105, .115, .13);
+    z += .07 * g(x, y, 0, .29, .12, .07);
+    z += .04 * g(x, y, 0, .41, .20, .08);
 
     const mouthY = .54 + .035 * (x / .28) ** 2;
     z += .060 * g(x, y, 0, mouthY - .035, .25, .035);
     z += .072 * g(x, y, 0, mouthY + .055, .24, .040);
     z -= .085 * g(x, y, 0, mouthY + .006, .27, .018);
-    z += .145 * g(x, y, 0, .91, .28, .18); // chin plane
-    z -= .035 * g(x, y, 0, .77, .25, .05); // under-lip hollow
+    z += .165 * g(x, y, 0, 1.00, .34, .23); // squared, forward chin
+    z -= .02 * g(x, y, 0, .78, .24, .05); // under-lip hollow
     return z;
   }
 
