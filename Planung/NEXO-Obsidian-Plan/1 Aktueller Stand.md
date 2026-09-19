@@ -1,6 +1,6 @@
 # Aktueller Stand – NEXO
 
-Stand: 19.09.2026 · Schritt 002
+Stand: 19.09.2026 · Schritt 003
 
 ## Funktioniert
 Startbares HUD im Edge-App-Fenster, Partikelkopf mit Mausverfolgung, Blinzeln und stummer Mundanimation, drei Farbmodi, große Gesichtsansicht, Bewegungspause, lokale Browsernotiz, Fokus-Timer, Uhr und Sitzungsprotokoll.
@@ -14,8 +14,9 @@ Cloud-KI statt lokalem Modell. Später Anbieterwechsel auf Befehl bei gemeinsame
 ## Schrittprotokoll
 - [[001 2026-09-19 HUD-Prototyp]]
 - [[002 2026-09-19 Dokumentation und GitHub-Workflow]]
+- [[003 2026-09-19 Obsidian aufgeräumt]]
 
 Nach jedem abgeschlossenen Arbeits- oder Planungsschritt entsteht hier eine neue nummerierte Notiz im Ordner `Schritte`. Code und Notiz werden gemeinsam auf GitHub gesichert.
 
 > [!important] Historische Planung
-> Die bisherigen Seiten 01–12 enthalten ältere Entwürfe, unter anderem lokale KI mit Ollama. Dieser Status und `STATUS.md` im Projektordner haben bei Widersprüchen Vorrang. Ziele sind keine bereits fertigen Funktionen.
+> Die älteren Fachplanungen und das Dashboard wurden entfernt und bleiben in der Git-Historie erhalten. Die verbliebene Mindmap enthält noch lokale KI-Vorschläge. Dieser aktuelle Status mit Cloud-KI als Ziel hat bei Widersprüchen Vorrang.

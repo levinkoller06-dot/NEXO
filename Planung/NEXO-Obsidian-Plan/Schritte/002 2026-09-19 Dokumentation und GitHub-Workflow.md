@@ -7,7 +7,7 @@ Nach jedem Schritt eine neue kurze Obsidian-Planungsnotiz anlegen und den Schrit
 
 ## Änderungen
 - `AGENTS.md` und `.cursor/rules/nexo-workflow.mdc` speichern die projektweiten Arbeitsregeln.
-- `STATUS.md` und [[13 Aktueller Stand]] trennen fertige Funktionen von offenen Zielen.
+- `STATUS.md` und [[1 Aktueller Stand]] trennen fertige Funktionen von offenen Zielen.
 - [[001 2026-09-19 HUD-Prototyp]] dokumentiert den bereits gebauten HUD nachträglich.
 - README und Dashboard an den tatsächlichen Entwicklungsstand angepasst.
 - Frühere Planungsseiten als historische Entwürfe eingeordnet: Cloud-Modelle ersetzen die frühere lokale KI-Planung. Noch keine endgültige Modellwahl.
