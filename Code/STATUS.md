@@ -1,6 +1,6 @@
 # NEXO – aktueller Projektstand
 
-Stand: 19.09.2026 · Schritt 008
+Stand: 19.09.2026 · Schritt 009
 
 ## Tatsächlich implementiert
 - Startbarer HUD-Prototyp: `NEXO starten.cmd` öffnet `App/index.html` als Edge-App-Fenster. Kein eigenständiger EXE-Installer.
@@ -29,7 +29,7 @@ Stand: 19.09.2026 · Schritt 008
 ## Überprüft
 - JavaScript-Syntax mit `node --check App/head.js`, `node --check App/app.js` und `node --check App/head-mesh-data.js` erfolgreich. Die Punktdarstellung nutzt runde Partikel statt quadratischer Blöcke.
 - Browseransicht visuell geprüft; Moduswechsel, Großansicht, Escape, Animation, Notiz-Speichermeldung und laufender Timer geprüft.
-- Die neue mesh-basierte Kopfform, Sprechanimation mit Zähnen und der Explosions-/Wiederzusammensetzungs-Effekt beim Moduswechsel wurden per lokalem Testserver im Browser geprüft (Front-, Dreiviertel- und erzwungene Seitenansicht sowie ein erzwungener Zwischenstand der Moduswechsel-Animation). Dabei zwei mesh-bedingte Probleme gefunden und behoben: volle Kugelaugen ohne Lid-Maskierung, und eine Lücke am Mund durch vom Betrachter wegzeigende Normalen im Quellmesh.
+- Die neue mesh-basierte Kopfform, Sprechanimation mit Zähnen und der Explosions-/Wiederzusammensetzungs-Effekt beim Moduswechsel wurden per lokalem Testserver im Browser geprüft (Front-, Dreiviertel- und erzwungene Seitenansicht sowie ein erzwungener Zwischenstand der Moduswechsel-Animation). Dabei drei mesh-bedingte Probleme gefunden und behoben: volle Kugelaugen ohne Lid-Maskierung, eine Lücke am Mund durch vom Betrachter wegzeigende Normalen im Quellmesh, und (Schritt 009, nach Nutzer-Meldung "Gesicht verkehrt herum") eine gespiegelte Händigkeit der Koordinatenumrechnung, die fast alle echten Oberflächen-Normalen invertiert hatte.
 - Windows-Startdatei ausgeführt. Das separate Edge-Fenster wurde nicht zusätzlich per UI inspiziert.
 - Noch kein Test der Notiz nach Browserneustart und kein vollständiger 25-Minuten-Durchlauf. Smartphone-Layout noch nicht visuell geprüft.
 

@@ -49,7 +49,10 @@ function createHeadPoints() {
     const x = u * ax + v * bx + w * cx, y = u * ay + v * by + w * cy, z = u * az + v * bz + w * cz;
     const e1x = bx - ax, e1y = by - ay, e1z = bz - az;
     const e2x = cx - ax, e2y = cy - ay, e2z = cz - az;
-    let nx = e1y * e2z - e1z * e2y, ny = e1z * e2x - e1x * e2z, nz = e1x * e2y - e1y * e2x;
+    // The OBJ-to-app axis remap (see head-mesh-data.js) mirrors the coordinate
+    // system, which flips the handedness the source mesh's winding order
+    // assumed — negate so normals point outward again instead of inward.
+    let nx = -(e1y * e2z - e1z * e2y), ny = -(e1z * e2x - e1x * e2z), nz = -(e1x * e2y - e1y * e2x);
     const len = Math.hypot(nx, ny, nz) || 1;
     nx /= len; ny /= len; nz /= len;
     return { x, y, z, nx, ny, nz };
