@@ -99,7 +99,13 @@ if (SpeechRecognitionImpl) {
   };
   $('talk').onclick = async () => {
     if (mic.wanted) { mic.setWanted(false); return; }
-    if (await ensureMicrophonePermission()) mic.setWanted(true);
+    // Start recognition directly from the click. Some Edge app windows keep
+    // getUserMedia pending while the permission bubble is hidden; waiting for
+    // that promise made the button appear dead. The permission check runs in
+    // parallel and stops recognition only when access is definitely denied.
+    mic.setWanted(true);
+    const allowed = await ensureMicrophonePermission();
+    if (!allowed && mic.wanted) mic.setWanted(false);
   };
   document.addEventListener('visibilitychange', () => {
     if (!document.hidden && mic.wanted && !busy) mic.schedule();
