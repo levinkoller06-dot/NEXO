@@ -45,7 +45,12 @@
         }
       } else if ((!this.wanted || this.busy) && ['starting', 'listening'].includes(this.actual)) {
         this.actual = 'stopping';
-        try { this.recognition.abort(); } catch { this.actual = 'idle'; }
+        try {
+          // A graceful stop lets Chromium finish its current recognition cycle;
+          // abort remains the fallback for implementations without stop().
+          if (typeof this.recognition.stop === 'function') this.recognition.stop();
+          else this.recognition.abort();
+        } catch { this.actual = 'idle'; this.schedule(); }
       }
       this.notify();
     }

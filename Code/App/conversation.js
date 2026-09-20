@@ -2,7 +2,7 @@
 const conversationHistory = [];
 const SpeechRecognitionImpl = window.SpeechRecognition || window.webkitSpeechRecognition;
 let mic = null, busy = false, cancelSpeech = () => {}, lastModeEvent = null;
-function setTalkStatus(text) { $('talk-status').textContent = text; }
+function setTalkStatus() {}
 function showError(err) {
   $('state').textContent = String(err.message || err).slice(0, 190);
   setTalkStatus('FEHLER');
@@ -51,7 +51,8 @@ const queue = new NexoConversationState.SerialQueue({
     $('state').textContent = 'NEXO arbeitet …'; setTalkStatus('ARBEITET');
     const data = await NexoApi.post('/api/chat', { mode, messages: conversationHistory.map(h => ({ ...h })) }, { signal });
     if (signal.aborted) return;
-    $('model-status').textContent = (data.provider === 'gemini' ? 'Gemini' : 'OpenAI') + ' · ' + data.model;
+    const modelStatus = document.getElementById('model-status');
+    if (modelStatus) modelStatus.textContent = (data.provider === 'gemini' ? 'Gemini' : 'OpenAI') + ' · ' + data.model;
     for (const item of data.toolLog || []) if (item.name === 'set_mode' && item.result.ok) window.nexoSetMode(item.result.mode);
     addTurn('assistant', data.reply);
     await say(data.reply, signal);
@@ -61,14 +62,27 @@ const queue = new NexoConversationState.SerialQueue({
 if (SpeechRecognitionImpl) {
   const recognition = new SpeechRecognitionImpl();
   recognition.lang = 'de-DE'; recognition.continuous = true; recognition.interimResults = true;
+  let microphoneRequest = null;
+  async function ensureMicrophonePermission() {
+    if (!navigator.mediaDevices?.getUserMedia) return true;
+    if (!microphoneRequest) {
+      microphoneRequest = navigator.mediaDevices.getUserMedia({ audio: true }).then(stream => {
+        for (const track of stream.getTracks()) track.stop();
+        return true;
+      }).catch(error => {
+        showError(new Error(error.name === 'NotAllowedError' ? 'Mikrofon-Zugriff wurde verweigert.' : 'Mikrofon ist nicht verfügbar.'));
+        return false;
+      }).finally(() => { microphoneRequest = null; });
+    }
+    return microphoneRequest;
+  }
   mic = new NexoConversationState.MicController({
     recognition,
     onChange({ wanted, busy: working, actual }) {
       const active = wanted && !working && actual === 'listening';
       $('talk').classList.toggle('active', active); $('talk').classList.toggle('muted', !active);
       $('talk').setAttribute('aria-pressed', String(wanted));
-      $('talk').setAttribute('aria-label', wanted ? 'Gespräch ausschalten' : 'Gespräch einschalten');
-      $('mic-status').textContent = active ? 'Hört zu' : (wanted && working ? 'Pause während Antwort' : (wanted ? 'Startet …' : 'Aus'));
+      $('talk').setAttribute('aria-label', wanted ? 'Stummschaltung einschalten' : 'Stummschaltung aufheben');
     },
     onError(error) { showError(new Error(error === 'not-allowed' ? 'Mikrofon-Zugriff wurde verweigert.' : 'Spracherkennung: ' + error)); }
   });
@@ -83,10 +97,15 @@ if (SpeechRecognitionImpl) {
     }
     if (text.trim()) queue.push(text.trim().slice(0, 8000));
   };
-  $('talk').onclick = () => { mic.setWanted(!mic.wanted); if (!busy) setTalkStatus(mic.wanted ? 'HÖRT ZU' : 'AUS'); };
+  $('talk').onclick = async () => {
+    if (mic.wanted) { mic.setWanted(false); return; }
+    if (await ensureMicrophonePermission()) mic.setWanted(true);
+  };
+  document.addEventListener('visibilitychange', () => {
+    if (!document.hidden && mic.wanted && !busy) mic.schedule();
+  });
 } else {
   $('talk').disabled = true; $('talk').classList.add('muted');
-  $('talk-hint').textContent = 'SPRACHE NICHT VERFÜGBAR';
 }
 function stopLocally() { mic?.setWanted(false); queue.stop(); cancelSpeech(); $('state').textContent = 'Gestoppt.'; setTalkStatus('AUS'); }
 window.nexoStop = async () => {

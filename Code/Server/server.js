@@ -117,7 +117,7 @@ function createNexoServer({ env = process.env, bridge, agent = createAgent({ env
       try { route = decodeURIComponent(req.url.split('?')[0]); } catch { throw failure(400, 'Ungültige URL-Codierung.'); }
       if (req.method === 'GET' && route === '/api/health') {
         return json(res, 200, { ok: true, modeProvider: MODE_PROVIDER, models: agent.models,
-          providers: { openai: !!env.OPENAI_API_KEY, gemini: !!env.GEMINI_API_KEY }, version: 21 });
+          providers: { openai: !!env.OPENAI_API_KEY, gemini: !!env.GEMINI_API_KEY }, version: 22 });
       }
       if (req.method === 'GET' && route === '/api/session') {
         if (sessions.size >= 16) throw failure(429, 'Zu viele offene Sitzungen. NEXO-Fenster schließen.');

@@ -2,3 +2,4 @@
 #state{display:inline-block;max-width:88%;overflow-wrap:anywhere}.voice-status{font:8px Consolas,monospace;letter-spacing:1.5px;color:var(--muted);text-align:center;padding:3px 0}
 #approval{width:min(680px,88vw)}#approval h2{letter-spacing:1px}#approval-image{width:100%;max-height:40vh;object-fit:contain;background:#030609}#approval-action{white-space:pre-wrap;overflow-wrap:anywhere;max-height:100px;overflow:auto}.approval-buttons{display:flex;justify-content:flex-end;gap:10px}#approve{border-color:var(--accent)}
 @media(max-width:680px){.header-date{font-size:10px;letter-spacing:0}time{font-size:14px}.brand{letter-spacing:3px}}
+.visually-hidden{position:absolute!important;width:1px!important;height:1px!important;padding:0!important;margin:-1px!important;overflow:hidden!important;clip:rect(0,0,0,0)!important;white-space:nowrap!important;border:0!important}

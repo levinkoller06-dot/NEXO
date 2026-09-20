@@ -317,3 +317,10 @@ test('HUD references existing elements and loads helpers before conversation', (
   for (const name of scripts) assert.ok(fs.existsSync(path.join(dir, name)), name);
   for (const name of ['app.js', 'api.js', 'conversation-state.js']) assert.ok(scripts.indexOf(name) < scripts.indexOf('conversation.js'));
 });
+test('HUD omits obsolete conversation, PC-control and status copy', () => {
+  const fs = require('fs'), path = require('path');
+  const html = fs.readFileSync(path.resolve(__dirname, '../App/index.html'), 'utf8');
+  for (const text of ['Mikrofon', 'Gespräch', 'Neural Interface', 'System stabil', 'Build 001', 'Bewege den Mauszeiger', 'NEXO darf meinen PC bedienen', 'pc-control'])
+    assert.doesNotMatch(html, new RegExp(text, 'i'));
+  assert.match(html, /id="talk"/);
+});

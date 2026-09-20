@@ -1,9 +1,9 @@
 # NEXO Planung und Ziel
 
-Stand: 20.09.2026 · Schritt 021 (HUD vereinfacht, Desktopsteuerung automatisch)
+Stand: 20.09.2026 · Schritt 022 (Mikrofonzugriff und HUD-Texte bereinigt)
 Zielbild: Cloud-basierte persönliche Assistenz für PC, Handy und Telefon
 
-Die Nummern 000–015 unten sind Planungsphasen; die fortlaufenden Arbeitsnotizen unter `Schritte/` haben eine eigene Nummerierung. Zum aktuellen Code und seinen Grenzen siehe [[1 Aktueller Stand]], [[019 2026-09-20 Analyse der Aenderungen]], [[020 2026-09-20 KI-Desktopsteuerung und Fehlerbehebung]] und [[021 2026-09-20 HUD vereinfacht und Mikrofon repariert]].
+Die Nummern 000–015 unten sind Planungsphasen; die fortlaufenden Arbeitsnotizen unter `Schritte/` haben eine eigene Nummerierung. Zum aktuellen Code und seinen Grenzen siehe [[1 Aktueller Stand]], [[019 2026-09-20 Analyse der Aenderungen]], [[020 2026-09-20 KI-Desktopsteuerung und Fehlerbehebung]], [[021 2026-09-20 HUD vereinfacht und Mikrofon repariert]] und [[022 2026-09-20 Mikrofonzugriff und HUD-Texte bereinigt]].
 
 ## Das Ziel
 
@@ -204,4 +204,4 @@ Fertig, wenn: Ein Fehler keine stillen PC-Aktionen verursacht und der komplette 
 
 ## Aktueller nächster Schritt
 
-Als Nächstes die Desktopsteuerung praktisch im HUD testen: Fokus-Modus wählen, Mikrofon einschalten und eine harmlose Aufgabe ohne Speichern ausführen. Danach folgen Geräte-Paarung, dauerhafte Sitzungen und der Cloud-Core. [[021 2026-09-20 HUD vereinfacht und Mikrofon repariert]] enthält den aktuellen Testauftrag.
+Als Nächstes die Desktopsteuerung praktisch im HUD testen: alte HUD-Sitzung schließen, NEXO neu starten, Mikrofonzugriff erlauben, Mikrofon ein-/ausschalten und eine harmlose Aufgabe ohne Speichern ausführen. Danach folgen Geräte-Paarung, dauerhafte Sitzungen und der Cloud-Core. [[022 2026-09-20 Mikrofonzugriff und HUD-Texte bereinigt]] enthält den aktuellen Testauftrag.
