@@ -125,7 +125,7 @@ function createNexoServer({ env = process.env, bridge, agent = createAgent({ env
       try { route = decodeURIComponent(req.url.split('?')[0]); } catch { throw failure(400, 'Ungültige URL-Codierung.'); }
       if (req.method === 'GET' && route === '/api/health') {
         return json(res, 200, { ok: true, modeProvider: MODE_PROVIDER, models: agent.models,
-          providers: { openai: !!env.OPENAI_API_KEY, gemini: !!env.GEMINI_API_KEY }, version: 28 });
+          providers: { openai: !!env.OPENAI_API_KEY, gemini: !!env.GEMINI_API_KEY }, version: 29 });
       }
       if (req.method === 'GET' && route === '/api/session') {
         if (sessions.size >= 16) throw failure(429, 'Zu viele offene Sitzungen. NEXO-Fenster schließen.');
@@ -194,6 +194,7 @@ function createNexoServer({ env = process.env, bridge, agent = createAgent({ env
             if (name === 'computer_observe') return desktop.observe(current.id, signal);
             if (name === 'computer_action') return desktop.action(current.id, args, signal);
             if (name === 'launch_app') return desktop.launchApp(current.id, args, signal);
+            if (name === 'search_web') return desktop.searchWeb(current.id, args, signal);
             throw new Error('Unbekanntes Werkzeug.');
           },
           onTool: entry => {

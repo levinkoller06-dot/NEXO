@@ -1,4 +1,5 @@
 using System;
+using System.Diagnostics;
 using System.Drawing;
 using System.Drawing.Imaging;
 using System.IO;
@@ -7,6 +8,7 @@ using System.Text;
 using System.Threading;
 using System.Collections.Generic;
 using System.Windows.Forms;
+using System.Windows.Automation;
 
 public static class NexoDesktop {
     [StructLayout(LayoutKind.Sequential)] struct INPUT { public uint type; public UNION data; }
@@ -126,6 +128,24 @@ public static class NexoDesktop {
         IntPtr wp=down?(IntPtr)(button=="right"?MK_RBUTTON:MK_LBUTTON):IntPtr.Zero;
         PostMessage(hwnd,msg,wp,MakeLParam(client.X,client.Y));
     }
+    // The most reliable way to click without moving the real cursor: ask the
+    // accessible control itself to perform its default action via UI
+    // Automation, the same interface screen readers use. No synthetic mouse
+    // event exists at all, so it works even for apps that ignore PostMessage.
+    // Only meaningful for a plain left click; falls back to PostMessage/
+    // SendInput (via the normal pointer branches) when no such control exists
+    // at the point, or for right-clicks (Invoke has no "context menu" mode).
+    static bool TryUiaInvoke(int x,int y) {
+        try {
+            AutomationElement el=AutomationElement.FromPoint(new System.Windows.Point(x,y));
+            if(el==null)return false;
+            object pattern;
+            if(el.TryGetCurrentPattern(InvokePattern.Pattern,out pattern)){((InvokePattern)pattern).Invoke();return true;}
+            if(el.TryGetCurrentPattern(SelectionItemPattern.Pattern,out pattern)){((SelectionItemPattern)pattern).Select();return true;}
+            if(el.TryGetCurrentPattern(TogglePattern.Pattern,out pattern)){((TogglePattern)pattern).Toggle();return true;}
+            return false;
+        } catch { return false; }
+    }
     public static void Act(string action,int x,int y,int x2,int y2,string text,string chord,int steps,string button,string pointer,
         int left,int top,int width,int height) {
         Dpi();CheckStop();
@@ -168,8 +188,12 @@ public static class NexoDesktop {
                 POINT client; IntPtr hwnd=TargetWindow(x,y,out client);
                 PostMessage(hwnd,WM_MOUSEMOVE,IntPtr.Zero,MakeLParam(client.X,client.Y));
             } else if(action=="click"||action=="double_click") {
-                int count=action=="double_click"?2:1;
-                for(int i=0;i<count;i++){CheckStop();PostClick(x,y,button,true);Thread.Sleep(20);PostClick(x,y,button,false);if(i==0&&count==2)Thread.Sleep(70);}
+                CheckTarget(x,y);
+                if(button=="left"&&TryUiaInvoke(x,y)){}
+                else {
+                    int count=action=="double_click"?2:1;
+                    for(int i=0;i<count;i++){CheckStop();PostClick(x,y,button,true);Thread.Sleep(20);PostClick(x,y,button,false);if(i==0&&count==2)Thread.Sleep(70);}
+                }
             } else if(action=="drag") {
                 POINT client; IntPtr hwnd=TargetWindow(x,y,out client);
                 POINT endDummy; TargetWindow(x2,y2,out endDummy);
@@ -201,5 +225,14 @@ public static class NexoDesktop {
             Key(0,false,c);Key(0,true,c);
         }
         Thread.Sleep(300);
+    }
+    // Opens a Google search directly in the default browser via the OS's own
+    // URL handling, instead of finding/clicking a search box on screen. Only
+    // ever a fixed google.com/search URL with the query safely encoded, never
+    // an arbitrary caller-supplied URL/scheme.
+    public static void SearchWeb(string query) {
+        Dpi();CheckStop();
+        string url="https://www.google.com/search?q="+Uri.EscapeDataString(query);
+        Process.Start(new ProcessStartInfo(url) { UseShellExecute=true });
     }
 }

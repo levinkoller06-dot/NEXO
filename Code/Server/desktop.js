@@ -108,6 +108,7 @@ class NativeBridge {
       throw err;
     }
   }
+  searchWeb(query, signal) { return this.run({ operation: 'searchWeb', query }, signal); }
   watchStop(onStop) {
     return new Promise((resolve, reject) => {
       let child, ready = false, closed = false, buffer = '';
@@ -234,6 +235,14 @@ class DesktopController {
     const { query } = validateLaunch(raw);
     this.frame = null;
     await this.bridge.launchApp(query, signal);
+    this.assertEnabled(owner, signal);
+    return this.observe(owner, signal);
+  }
+  async searchWeb(owner, raw, signal) {
+    this.assertEnabled(owner, signal);
+    const { query } = validateLaunch(raw);
+    this.frame = null;
+    await this.bridge.searchWeb(query, signal);
     this.assertEnabled(owner, signal);
     return this.observe(owner, signal);
   }

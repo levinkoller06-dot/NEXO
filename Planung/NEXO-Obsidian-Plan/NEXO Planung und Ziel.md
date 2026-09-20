@@ -1,9 +1,9 @@
 # NEXO Planung und Ziel
 
-Stand: 20.09.2026 · Schritt 026 (Denkbudget für PC-Steuerung und sicheres launch_app)
+Stand: 20.09.2026 · Schritt 027 (Karen-Techniken: UIA-Klicks, Websuche, Barge-in)
 Zielbild: Cloud-basierte persönliche Assistenz für PC, Handy und Telefon
 
-Die Nummern 000–015 unten sind Planungsphasen; die fortlaufenden Arbeitsnotizen unter `Schritte/` haben eine eigene Nummerierung. Zum aktuellen Code und seinen Grenzen siehe [[1 Aktueller Stand]], [[019 2026-09-20 Analyse der Aenderungen]], [[020 2026-09-20 KI-Desktopsteuerung und Fehlerbehebung]], [[021 2026-09-20 HUD vereinfacht und Mikrofon repariert]], [[022 2026-09-20 Mikrofonzugriff und HUD-Texte bereinigt]], [[023 2026-09-20 Audio-Fallback für Edge-App ergänzt]], [[024 2026-09-20 Mikrofon-Fix, Gemini-Stimme und Tempo]], [[025 2026-09-20 Bewegungs-Fix, Stimmklaerung und unsichtbare Maus]] und [[026 2026-09-20 Denkbudget fuer PC-Steuerung und sicheres launch_app]].
+Die Nummern 000–015 unten sind Planungsphasen; die fortlaufenden Arbeitsnotizen unter `Schritte/` haben eine eigene Nummerierung. Zum aktuellen Code und seinen Grenzen siehe [[1 Aktueller Stand]], [[019 2026-09-20 Analyse der Aenderungen]], [[020 2026-09-20 KI-Desktopsteuerung und Fehlerbehebung]], [[021 2026-09-20 HUD vereinfacht und Mikrofon repariert]], [[022 2026-09-20 Mikrofonzugriff und HUD-Texte bereinigt]], [[023 2026-09-20 Audio-Fallback für Edge-App ergänzt]], [[024 2026-09-20 Mikrofon-Fix, Gemini-Stimme und Tempo]], [[025 2026-09-20 Bewegungs-Fix, Stimmklaerung und unsichtbare Maus]], [[026 2026-09-20 Denkbudget fuer PC-Steuerung und sicheres launch_app]] und [[027 2026-09-20 Karen-Techniken - UIA-Klicks, Websuche, Barge-in]].
 
 ## Das Ziel
 
@@ -204,4 +204,4 @@ Fertig, wenn: Ein Fehler keine stillen PC-Aktionen verursacht und der komplette 
 
 ## Aktueller nächster Schritt
 
-Als Nächstes NEXO neu starten (Serverversion 28) und denselben PC-Auftrag wie zuvor wiederholen: keine ungefragten Zusatzprogramme, kein grundloser Rechtsklick, `launch_app` bricht bei falschem Treffer ab statt etwas Falsches zu öffnen. Danach folgen Geräte-Paarung, dauerhafte Sitzungen und der Cloud-Core. [[026 2026-09-20 Denkbudget fuer PC-Steuerung und sicheres launch_app]] enthält den aktuellen Testauftrag.
+Als Nächstes NEXO neu starten (Serverversion 29) und prüfen: Klicks bewegen den sichtbaren Mauszeiger seltener/nie (UI Automation), "such X bei Google" öffnet sofort eine Google-Suche, NEXO lässt sich mitten im Sprechen unterbrechen. Danach folgen Geräte-Paarung, dauerhafte Sitzungen und der Cloud-Core. [[027 2026-09-20 Karen-Techniken - UIA-Klicks, Websuche, Barge-in]] enthält den aktuellen Testauftrag.

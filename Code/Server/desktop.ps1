@@ -3,7 +3,7 @@ $ErrorActionPreference = 'Stop'
 [Console]::InputEncoding = [System.Text.UTF8Encoding]::new($false)
 [Console]::OutputEncoding = [System.Text.UTF8Encoding]::new($false)
 try {
-    Add-Type -Path (Join-Path $PSScriptRoot 'desktop-native.cs') -ReferencedAssemblies System.Drawing,System.Windows.Forms
+    Add-Type -Path (Join-Path $PSScriptRoot 'desktop-native.cs') -ReferencedAssemblies System.Drawing,System.Windows.Forms,System,UIAutomationClient,UIAutomationTypes,WindowsBase
     if ($CheckOnly) {
         @{ ok=$true; inputSize=[NexoDesktop]::InputSize() } | ConvertTo-Json -Compress
     } elseif ($Watch) {
@@ -22,6 +22,9 @@ try {
             @{ok=$true} | ConvertTo-Json -Compress
         } elseif ($request.operation -eq 'launchApp') {
             [NexoDesktop]::LaunchApp($request.query)
+            @{ok=$true} | ConvertTo-Json -Compress
+        } elseif ($request.operation -eq 'searchWeb') {
+            [NexoDesktop]::SearchWeb($request.query)
             @{ok=$true} | ConvertTo-Json -Compress
         } elseif ($request.operation -eq 'release') {
             [NexoDesktop]::Release()

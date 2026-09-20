@@ -16,6 +16,10 @@ function addTurn(role, text) {
   while (list.children.length > 60) list.firstElementChild.remove();
   list.scrollTop = list.scrollHeight;
 }
+// The mic stays live through the whole "thinking" phase being the only time
+// it's muted; once NEXO starts speaking it listens again so the user can
+// just talk over it instead of waiting it out. See updateMicBusy().
+function updateMicBusy() { mic?.setBusy(busy && !speaking); }
 function sayWithBrowserVoice(text, signal) {
   if (!window.speechSynthesis || signal.aborted) return Promise.resolve();
   cancelSpeech();
@@ -25,12 +29,12 @@ function sayWithBrowserVoice(text, signal) {
     const done = () => {
       if (finished) return; finished = true;
       clearTimeout(timer); signal.removeEventListener('abort', cancel);
-      speaking = false; cancelSpeech = () => {}; resolve();
+      speaking = false; updateMicBusy(); cancelSpeech = () => {}; resolve();
     };
     const cancel = () => { speechSynthesis.cancel(); done(); };
     const timer = setTimeout(cancel, 90000);
     cancelSpeech = cancel; signal.addEventListener('abort', cancel, { once: true });
-    utter.onend = utter.onerror = done; utter.onstart = () => { if (!finished) speaking = true; };
+    utter.onend = utter.onerror = done; utter.onstart = () => { if (!finished) { speaking = true; updateMicBusy(); } };
     $('state').textContent = 'NEXO spricht.';
     speechSynthesis.speak(utter);
   });
@@ -60,7 +64,7 @@ function playSpeechBlob(blob, signal) {
     };
     const cancel = () => { audio.pause(); done(); };
     cancelSpeech = cancel; signal.addEventListener('abort', cancel, { once: true });
-    audio.onended = audio.onerror = done; audio.onplay = () => { if (!finished) speaking = true; };
+    audio.onended = audio.onerror = done; audio.onplay = () => { if (!finished) { speaking = true; updateMicBusy(); } };
     audio.play().catch(done);
   });
 }
@@ -78,11 +82,11 @@ async function say(text, signal) {
     if (!blob) { await sayWithBrowserVoice(chunks.slice(i).join(' '), signal); break; }
     await playSpeechBlob(blob, signal);
   }
-  speaking = false; cancelSpeech = () => {};
+  speaking = false; updateMicBusy(); cancelSpeech = () => {};
 }
 const queue = new NexoConversationState.SerialQueue({
   onBusy(value) {
-    busy = value; mic?.setBusy(value);
+    busy = value; updateMicBusy();
     const send = document.getElementById('send'), command = document.getElementById('command');
     if (send) send.disabled = value;
     if (command) command.setAttribute('aria-busy', String(value));
@@ -135,14 +139,20 @@ if (SpeechRecognitionImpl) {
   });
   mic.notify();
   recognition.onresult = event => {
-    if (busy || !mic.wanted) return;
+    if (!mic.wanted || (busy && !speaking)) return;
+    const interrupting = speaking;
     let text = '';
     for (let i = event.resultIndex; i < event.results.length; i++) {
       const r = event.results[i];
       if (r.isFinal) text += r[0].transcript + ' ';
       else $('state').textContent = r[0].transcript;
     }
-    if (text.trim()) queue.push(text.trim().slice(0, 8000));
+    if (text.trim()) {
+      // Barge-in: talking over NEXO cuts off the current reply instead of
+      // queuing behind it, so the user never has to wait it out to redirect.
+      if (interrupting) { cancelSpeech(); queue.stop(); }
+      queue.push(text.trim().slice(0, 8000));
+    }
   };
   // Start recognition directly, without waiting on the permission promise.
   // Some Edge app windows keep getUserMedia pending while the permission
@@ -155,7 +165,7 @@ if (SpeechRecognitionImpl) {
     const allowed = await ensureMicrophonePermission();
     if (!allowed && mic.wanted) mic.setWanted(false);
   }
-  $('talk').onclick = () => { if (mic.wanted) { mic.setWanted(false); return; } void startListening(); };
+  $('talk').onclick = () => { if (mic.wanted) { mic.setWanted(false); if (speaking) cancelSpeech(); return; } void startListening(); };
   void startListening();
   document.addEventListener('visibilitychange', () => {
     if (!document.hidden && mic.wanted && !busy) mic.schedule();

@@ -15,7 +15,8 @@ function fakeBridge() {
     async watchStop(fn) { this.stop = fn; return () => {}; },
     async observe() { calls.push('observe'); return { image: 'TEST_IMAGE_NOT_A_SCREENSHOT', width: 100, height: 50, screenWidth: 200, screenHeight: 100, left: -200, top: 0, title: 'Test', hud: [] }; },
     async act(a) { calls.push(a); return { ok: true }; },
-    async launchApp(query) { calls.push({ launchApp: query }); return { ok: true }; }
+    async launchApp(query) { calls.push({ launchApp: query }); return { ok: true }; },
+    async searchWeb(query) { calls.push({ searchWeb: query }); return { ok: true }; }
   };
 }
 async function fixture(t, run = async () => ({ reply: 'Test', toolLog: [] }), { env = {}, fetchImpl } = {}) {
@@ -34,7 +35,7 @@ async function fixture(t, run = async () => ({ reply: 'Test', toolLog: [] }), { 
 const requestBody = { mode: 'focus', messages: [{ role: 'user', content: 'Testauftrag' }] };
 
 test('R1/R2: old process-launch/force-kill tools are absent', () => {
-  assert.deepEqual(TOOL_DEFS.map(t => t.name), ['set_mode', 'computer_observe', 'computer_action', 'launch_app']);
+  assert.deepEqual(TOOL_DEFS.map(t => t.name), ['set_mode', 'computer_observe', 'computer_action', 'launch_app', 'search_web']);
   const fs = require('fs');
   const source = fs.readFileSync(require.resolve('../Server/server'), 'utf8');
   assert.doesNotMatch(source, /taskkill|ALLOWED_APPS|killByName|function launch/);
@@ -260,6 +261,17 @@ test('launch_app tool is reachable through the server execute dispatcher', async
   const f = await fixture(t, async ({ execute, signal }) => ({ reply: await execute('launch_app', { query: 'Rechner', reason: 'Rechner öffnen' }, signal) }));
   assert.equal((await f.post('/api/chat', requestBody)).status, 200);
   assert.deepEqual(f.bridge.calls.find(c => typeof c === 'object' && c.launchApp), { launchApp: 'Rechner' });
+});
+test('search_web opens a Google search via the bridge and the server dispatcher', async t => {
+  const bridge = fakeBridge(), desktop = new DesktopController({ bridge });
+  await desktop.enable('owner');
+  const result = await desktop.searchWeb('owner', { query: 'NEXO Assistent', reason: 'Websuche' });
+  assert.deepEqual(bridge.calls[0], { searchWeb: 'NEXO Assistent' });
+  assert.ok(result.frameId);
+  desktop.disable();
+  const f = await fixture(t, async ({ execute, signal }) => ({ reply: await execute('search_web', { query: 'NEXO', reason: 'Websuche' }, signal) }));
+  assert.equal((await f.post('/api/chat', requestBody)).status, 200);
+  assert.deepEqual(f.bridge.calls.find(c => typeof c === 'object' && c.searchWeb), { searchWeb: 'NEXO' });
 });
 
 function micFixture() {
