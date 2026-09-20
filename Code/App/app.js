@@ -1,7 +1,7 @@
 const $ = id => document.getElementById(id);
 const canvas = $('face'), ctx = canvas.getContext('2d');
 const modes = {standby:{name:'BEREIT',color:'#45e2d0',rgb:'69,226,208'},focus:{name:'FOKUS',color:'#aa8cff',rgb:'170,140,255'},energy:{name:'ENERGIE',color:'#ffb85e',rgb:'255,184,94'}};
-let mode='standby',paused=matchMedia('(prefers-reduced-motion: reduce)').matches,speaking=false,yaw=0,pitch=0,targetYaw=0,targetPitch=0,w=0,h=0,frames=0,lastFps=0,animTime=0,lastTime=0,transition=null;
+let mode='standby',speaking=false,yaw=0,pitch=0,targetYaw=0,targetPitch=0,w=0,h=0,frames=0,lastFps=0,animTime=0,lastTime=0,transition=null;
 const EXPLODE_SCALE=.85;
 function log(message){}
 function updateTime(){$('clock').textContent=new Date().toLocaleTimeString('de-CH');$('date').textContent=new Date().toLocaleDateString('de-CH',{weekday:'long',day:'numeric',month:'long'});$('day').textContent=new Date().toLocaleDateString('de-CH',{day:'2-digit',month:'2-digit'});}updateTime();setInterval(updateTime,1000);
@@ -15,7 +15,7 @@ let timerEnd=0; $('timer').onclick=()=>{if(timerEnd){timerEnd=0;$('timer-label')
 const points = createHeadPoints();
 function resize(){const rect=canvas.getBoundingClientRect();w=rect.width;h=rect.height;const dpr=Math.min(devicePixelRatio||1,1.3);canvas.width=Math.round(w*dpr);canvas.height=Math.round(h*dpr);ctx.setTransform(dpr,0,0,dpr,0,0);}new ResizeObserver(resize).observe($('stage'));resize();
 $('stage').addEventListener('pointermove',e=>{const r=canvas.getBoundingClientRect();targetYaw=((e.clientX-r.left)/w-.5)*.8;targetPitch=((e.clientY-r.top)/h-.5)*-.28;});$('stage').addEventListener('pointerleave',()=>{targetYaw=targetPitch=0;});
-function draw(now){requestAnimationFrame(draw);const dt=Math.min(40,now-lastTime||16);lastTime=now;if(!paused){animTime+=dt;yaw+=(targetYaw-yaw)*.045;pitch+=(targetPitch-pitch)*.04;}frames++;if(now-lastFps>1000){$('fps').textContent=Math.round(frames*1000/(now-lastFps));frames=0;lastFps=now;}
+function draw(now){requestAnimationFrame(draw);const dt=Math.min(40,now-lastTime||16);lastTime=now;animTime+=dt;yaw+=(targetYaw-yaw)*.045;pitch+=(targetPitch-pitch)*.04;frames++;if(now-lastFps>1000){$('fps').textContent=Math.round(frames*1000/(now-lastFps));frames=0;lastFps=now;}
  let explode=0;
  if(transition){
   const tt=Math.min(1,(now-transition.start)/transition.duration);explode=Math.sin(Math.PI*tt);

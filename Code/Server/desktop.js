@@ -16,6 +16,7 @@ function validateAction(args) {
       if (!Number.isInteger(args[k]) || args[k] < 0) throw new Error('Koordinaten müssen Bildpixel sein.');
       a[k] = args[k];
     }
+    a.pointer = args.pointer === 'visible' ? 'visible' : 'background';
   }
   if (a.action === 'click' || a.action === 'double_click') {
     a.button = args.button || 'left';
@@ -39,6 +40,12 @@ function validateAction(args) {
     if (a.key === 'CTRL+ALT+F12') throw new Error('Stopp-Taste ist dem Nutzer vorbehalten.');
   }
   return a;
+}
+function validateLaunch(args) {
+  if (typeof args?.query !== 'string' || !args.query.trim() || args.query.length > 200) throw new Error('Suchbegriff: 1–200 Zeichen.');
+  if (/[\r\n\0]/.test(args.query)) throw new Error('Suchbegriff muss einzeilig sein.');
+  if (typeof args.reason !== 'string' || !args.reason.trim() || args.reason.length > 500) throw new Error('Beschreibung der Aktion fehlt.');
+  return { query: args.query, reason: args.reason };
 }
 
 // Only fixed helper files are executable. Model text travels through stdin JSON,
@@ -90,6 +97,13 @@ class NativeBridge {
     try { return await this.run({ operation: 'action', action, bounds }, signal); }
     catch (err) {
       // A killed helper may not run its finally block. Release simulated keys.
+      await this.run({ operation: 'release' }).catch(() => {});
+      throw err;
+    }
+  }
+  async launchApp(query, signal) {
+    try { return await this.run({ operation: 'launchApp', query }, signal); }
+    catch (err) {
       await this.run({ operation: 'release' }).catch(() => {});
       throw err;
     }
@@ -215,5 +229,13 @@ class DesktopController {
     this.assertEnabled(owner, signal);
     return this.observe(owner, signal);
   }
+  async launchApp(owner, raw, signal) {
+    this.assertEnabled(owner, signal);
+    const { query } = validateLaunch(raw);
+    this.frame = null;
+    await this.bridge.launchApp(query, signal);
+    this.assertEnabled(owner, signal);
+    return this.observe(owner, signal);
+  }
 }
-module.exports = { NativeBridge, DesktopController, validateAction, checkAbort, abortError };
+module.exports = { NativeBridge, DesktopController, validateAction, validateLaunch, checkAbort, abortError };

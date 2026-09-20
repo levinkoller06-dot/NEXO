@@ -1,9 +1,9 @@
 # Aktueller Stand – NEXO
 
-Stand: 20.09.2026 · Schritt 024 (Mikrofon-Fix, Gemini-Stimme und Tempo)
+Stand: 20.09.2026 · Schritt 025 (Bewegungs-Fix, Stimmklärung und unsichtbare Maus)
 
 ## Funktioniert
-HUD mit 99.220 Punkten aus einem 3D-Kopfmodell, Mausverfolgung (immer aktiv), Blinzeln, Mundanimation während Sprachausgabe, Farb-/Partikelübergängen, Großansicht, Browsernotiz und Fokus-Timer. Lokaler Node-Server mit Cloud-Anbietern: Fokus/Bereit → Gemini (ohne Thinking, wegen Tempo), Energie → OpenAI. Browser-Spracherkennung (Mikrofon startet automatisch) und Gemini-Sprachausgabe (männliche Stimme "Charon", satzweise gestreamt), Gesprächsverlauf nur noch im Kern. Sichtbare Statuszeile ("Denkt nach …", "Hört zu.") über dem Kopf. NEXO aktiviert die allgemeine Desktopsteuerung automatisch für die aktive Sitzung und plant Bildschirm-, Maus- und Tastaturaktionen. Sensible Aktionen benötigen Bestätigung; Strg+Alt+F12 bleibt als unsichtbare Notabschaltung.
+HUD mit 99.220 Punkten aus einem 3D-Kopfmodell, Mausverfolgung (immer aktiv, ohne Ausschalter), Blinzeln, Mundanimation während Sprachausgabe, Farb-/Partikelübergängen, Großansicht, Browsernotiz und Fokus-Timer. Lokaler Node-Server mit Cloud-Anbietern: Fokus/Bereit → Gemini (ohne Thinking, wegen Tempo), Energie → OpenAI. Browser-Spracherkennung (Mikrofon startet automatisch) und Gemini-Sprachausgabe (Stimme "Charon", satzweise gestreamt), Gesprächsverlauf nur noch im Kern. Sichtbare Statuszeile ("Denkt nach …", "Hört zu.") über dem Kopf. NEXO aktiviert die allgemeine Desktopsteuerung automatisch für die aktive Sitzung und plant Bildschirm-, Maus- und Tastaturaktionen; Mausklicks/-ziehen/-scrollen laufen standardmäßig unsichtbar per Fensternachricht (`pointer=background`, Rückfall `visible`), `launch_app` öffnet Programme in einem Schritt. Sensible Aktionen benötigen Bestätigung; Strg+Alt+F12 bleibt als unsichtbare Notabschaltung.
 
 ## Behobene Befunde aus der Analyse
 [[019 2026-09-20 Analyse der Aenderungen]] enthielt sieben Befunde. [[020 2026-09-20 KI-Desktopsteuerung und Fehlerbehebung]] dokumentiert die Behebungen: kein erzwungenes Prozess-Schließen mehr, kontrollierte Helper-Fehler, geschützte lokale API, stabiler Mikrofon- und Anfrageablauf, mehrere Modell-/Werkzeugrunden sowie sichere URL-Fehlerbehandlung.
@@ -39,6 +39,7 @@ Cloud-KI bei lokal laufender Oberfläche und lokalem Server. OpenAI/Gemini sind 
 - [[022 2026-09-20 Mikrofonzugriff und HUD-Texte bereinigt]]
 - [[023 2026-09-20 Audio-Fallback für Edge-App ergänzt]]
 - [[024 2026-09-20 Mikrofon-Fix, Gemini-Stimme und Tempo]]
+- [[025 2026-09-20 Bewegungs-Fix, Stimmklaerung und unsichtbare Maus]]
 
 Nach jedem abgeschlossenen Arbeits- oder Planungsschritt entsteht hier eine neue nummerierte Notiz im Ordner `Schritte`. Code und Notiz werden gemeinsam auf GitHub gesichert.
 

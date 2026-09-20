@@ -4,7 +4,7 @@ const assert = require('node:assert/strict');
 const http = require('node:http');
 const { createNexoServer, validateMessages } = require('../Server/server');
 const { createAgent, TOOL_DEFS } = require('../Server/agent');
-const { DesktopController, NativeBridge, validateAction } = require('../Server/desktop');
+const { DesktopController, NativeBridge, validateAction, validateLaunch } = require('../Server/desktop');
 const { MicController, SerialQueue } = require('../App/conversation-state');
 const turn = () => new Promise(resolve => setImmediate(resolve));
 
@@ -14,7 +14,8 @@ function fakeBridge() {
     calls,
     async watchStop(fn) { this.stop = fn; return () => {}; },
     async observe() { calls.push('observe'); return { image: 'TEST_IMAGE_NOT_A_SCREENSHOT', width: 100, height: 50, screenWidth: 200, screenHeight: 100, left: -200, top: 0, title: 'Test', hud: [] }; },
-    async act(a) { calls.push(a); return { ok: true }; }
+    async act(a) { calls.push(a); return { ok: true }; },
+    async launchApp(query) { calls.push({ launchApp: query }); return { ok: true }; }
   };
 }
 async function fixture(t, run = async () => ({ reply: 'Test', toolLog: [] }), { env = {}, fetchImpl } = {}) {
@@ -33,7 +34,7 @@ async function fixture(t, run = async () => ({ reply: 'Test', toolLog: [] }), { 
 const requestBody = { mode: 'focus', messages: [{ role: 'user', content: 'Testauftrag' }] };
 
 test('R1/R2: old process-launch/force-kill tools are absent', () => {
-  assert.deepEqual(TOOL_DEFS.map(t => t.name), ['set_mode', 'computer_observe', 'computer_action']);
+  assert.deepEqual(TOOL_DEFS.map(t => t.name), ['set_mode', 'computer_observe', 'computer_action', 'launch_app']);
   const fs = require('fs');
   const source = fs.readFileSync(require.resolve('../Server/server'), 'utf8');
   assert.doesNotMatch(source, /taskkill|ALLOWED_APPS|killByName|function launch/);
@@ -224,6 +225,31 @@ test('Global hotkey and HUD heartbeat loss revoke control', async () => {
 test('Invalid keyboard/text actions rejected before native input', () => {
   for (const extra of [{ action: 'type', text: 'line1\nline2' }, { action: 'key', key: 'arbitrary.exe' }, { action: 'key', key: 'CTRL+ALT+F12' }, { action: 'scroll', x: 0, y: 0, steps: 500 }])
     assert.throws(() => validateAction({ frameId: 'f', reason: 'Test', risk: 'routine', ...extra }));
+});
+test('Coordinate actions default to a background pointer that never moves the real cursor', () => {
+  const a = validateAction({ action: 'click', x: 1, y: 2, frameId: 'f', reason: 'Test', risk: 'routine' });
+  assert.equal(a.pointer, 'background');
+  const visible = validateAction({ action: 'click', x: 1, y: 2, pointer: 'visible', frameId: 'f', reason: 'Test', risk: 'routine' });
+  assert.equal(visible.pointer, 'visible');
+});
+test('validateLaunch rejects empty/oversized queries and missing reason', () => {
+  assert.throws(() => validateLaunch({ query: '', reason: 'Test' }));
+  assert.throws(() => validateLaunch({ query: 'x'.repeat(201), reason: 'Test' }));
+  assert.throws(() => validateLaunch({ query: 'Notepad', reason: '' }));
+  assert.deepEqual(validateLaunch({ query: 'Notepad', reason: 'Editor öffnen' }), { query: 'Notepad', reason: 'Editor öffnen' });
+});
+test('launch_app opens via the bridge in one step and returns a fresh observation', async () => {
+  const bridge = fakeBridge(), desktop = new DesktopController({ bridge });
+  await desktop.enable('owner');
+  const result = await desktop.launchApp('owner', { query: 'Rechner', reason: 'Rechner öffnen' });
+  assert.deepEqual(bridge.calls[0], { launchApp: 'Rechner' });
+  assert.ok(result.frameId);
+  desktop.disable();
+});
+test('launch_app tool is reachable through the server execute dispatcher', async t => {
+  const f = await fixture(t, async ({ execute, signal }) => ({ reply: await execute('launch_app', { query: 'Rechner', reason: 'Rechner öffnen' }, signal) }));
+  assert.equal((await f.post('/api/chat', requestBody)).status, 200);
+  assert.deepEqual(f.bridge.calls.find(c => typeof c === 'object' && c.launchApp), { launchApp: 'Rechner' });
 });
 
 function micFixture() {

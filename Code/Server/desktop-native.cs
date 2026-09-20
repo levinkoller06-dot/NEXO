@@ -34,6 +34,11 @@ public static class NexoDesktop {
     [DllImport("user32.dll")] static extern bool GetWindowRect(IntPtr hwnd, out RECT rect);
     [DllImport("user32.dll")] static extern bool IsWindowVisible(IntPtr hwnd);
     [DllImport("user32.dll")] static extern bool EnumWindows(EnumWindowProc proc, IntPtr param);
+    [DllImport("user32.dll")] static extern bool PostMessage(IntPtr hwnd, uint msg, IntPtr wParam, IntPtr lParam);
+    [DllImport("user32.dll")] static extern bool ScreenToClient(IntPtr hwnd, ref POINT point);
+    const uint WM_MOUSEMOVE=0x0200, WM_LBUTTONDOWN=0x0201, WM_LBUTTONUP=0x0202,
+        WM_RBUTTONDOWN=0x0204, WM_RBUTTONUP=0x0205, WM_MOUSEWHEEL=0x020A;
+    const int MK_LBUTTON=0x0001, MK_RBUTTON=0x0002;
     public class Shot {
         public string image, title; public int width, height, left, top, screenWidth, screenHeight;
         public List<RECT> hud = new List<RECT>();
@@ -104,7 +109,24 @@ public static class NexoDesktop {
         IntPtr target=GetAncestor(WindowFromPoint(new POINT {X=x,Y=y}),2);
         if(IsHud(Title(target)))throw new InvalidOperationException("NEXO darf seine eigenen Freigaben nicht bedienen. Wechsle zuerst das Fenster.");
     }
-    public static void Act(string action,int x,int y,int x2,int y2,string text,string chord,int steps,string button,
+    static IntPtr MakeLParam(int x,int y) { return (IntPtr)((y<<16)|(x&0xFFFF)); }
+    // Posting messages straight to the window under the point lets NEXO click
+    // without moving the user's own visible cursor. Not every app honours
+    // synthetic messages (games, canvas surfaces); the model can retry with
+    // pointer=visible (real SetCursorPos+SendInput below) when that happens.
+    static IntPtr TargetWindow(int x,int y,out POINT client) {
+        IntPtr hwnd=WindowFromPoint(new POINT {X=x,Y=y});
+        if(IsHud(Title(GetAncestor(hwnd,2))))throw new InvalidOperationException("NEXO darf seine eigenen Freigaben nicht bedienen. Wechsle zuerst das Fenster.");
+        client=new POINT {X=x,Y=y}; ScreenToClient(hwnd,ref client);
+        return hwnd;
+    }
+    static void PostClick(int x,int y,string button,bool down) {
+        POINT client; IntPtr hwnd=TargetWindow(x,y,out client);
+        uint msg=button=="right"?(down?WM_RBUTTONDOWN:WM_RBUTTONUP):(down?WM_LBUTTONDOWN:WM_LBUTTONUP);
+        IntPtr wp=down?(IntPtr)(button=="right"?MK_RBUTTON:MK_LBUTTON):IntPtr.Zero;
+        PostMessage(hwnd,msg,wp,MakeLParam(client.X,client.Y));
+    }
+    public static void Act(string action,int x,int y,int x2,int y2,string text,string chord,int steps,string button,string pointer,
         int left,int top,int width,int height) {
         Dpi();CheckStop();
         var area=SystemInformation.VirtualScreen;
@@ -125,20 +147,56 @@ public static class NexoDesktop {
             }
         } else if(action=="click"||action=="double_click"||action=="move"||action=="drag"||action=="scroll") {
             if(!area.Contains(x,y))throw new ArgumentException("Punkt liegt außerhalb des Bildschirms.");
-            CheckTarget(x,y);
-            if(!SetCursorPos(x,y))throw new InvalidOperationException("Maus konnte nicht bewegt werden.");
-            if(action=="scroll")Mouse(0x0800,steps*120);
-            else if(action=="click"||action=="double_click") {
-                uint down=button=="right"?8u:2u,up=button=="right"?16u:4u;
+            if(action=="drag"&&!area.Contains(x2,y2))throw new ArgumentException("Ziel liegt außerhalb des Bildschirms.");
+            if(pointer=="visible") {
+                CheckTarget(x,y);
+                if(!SetCursorPos(x,y))throw new InvalidOperationException("Maus konnte nicht bewegt werden.");
+                if(action=="scroll")Mouse(0x0800,steps*120);
+                else if(action=="click"||action=="double_click") {
+                    uint down=button=="right"?8u:2u,up=button=="right"?16u:4u;
+                    int count=action=="double_click"?2:1;
+                    for(int i=0;i<count;i++){CheckStop();try{Mouse(down,0);}finally{Mouse(up,0);}if(i==0&&count==2)Thread.Sleep(70);}
+                } else if(action=="drag") {
+                    CheckTarget(x2,y2);
+                    try {Mouse(2,0);for(int i=1;i<=16;i++){CheckStop();SetCursorPos(x+(x2-x)*i/16,y+(y2-y)*i/16);Thread.Sleep(15);}}
+                    finally{Mouse(4,0);}
+                }
+            } else if(action=="scroll") {
+                POINT dummy; IntPtr hwnd=TargetWindow(x,y,out dummy);
+                PostMessage(hwnd,WM_MOUSEWHEEL,(IntPtr)(steps*120<<16),MakeLParam(x,y));
+            } else if(action=="move") {
+                POINT client; IntPtr hwnd=TargetWindow(x,y,out client);
+                PostMessage(hwnd,WM_MOUSEMOVE,IntPtr.Zero,MakeLParam(client.X,client.Y));
+            } else if(action=="click"||action=="double_click") {
                 int count=action=="double_click"?2:1;
-                for(int i=0;i<count;i++){CheckStop();try{Mouse(down,0);}finally{Mouse(up,0);}if(i==0&&count==2)Thread.Sleep(70);}
+                for(int i=0;i<count;i++){CheckStop();PostClick(x,y,button,true);Thread.Sleep(20);PostClick(x,y,button,false);if(i==0&&count==2)Thread.Sleep(70);}
             } else if(action=="drag") {
-                if(!area.Contains(x2,y2))throw new ArgumentException("Ziel liegt außerhalb des Bildschirms.");
-                CheckTarget(x2,y2);
-                try {Mouse(2,0);for(int i=1;i<=16;i++){CheckStop();SetCursorPos(x+(x2-x)*i/16,y+(y2-y)*i/16);Thread.Sleep(15);}}
-                finally{Mouse(4,0);}
+                POINT client; IntPtr hwnd=TargetWindow(x,y,out client);
+                POINT endDummy; TargetWindow(x2,y2,out endDummy);
+                PostMessage(hwnd,WM_LBUTTONDOWN,(IntPtr)MK_LBUTTON,MakeLParam(client.X,client.Y));
+                for(int i=1;i<=16;i++){
+                    CheckStop();
+                    POINT step=new POINT {X=x+(x2-x)*i/16,Y=y+(y2-y)*i/16}; ScreenToClient(hwnd,ref step);
+                    PostMessage(hwnd,WM_MOUSEMOVE,(IntPtr)MK_LBUTTON,MakeLParam(step.X,step.Y));
+                    Thread.Sleep(15);
+                }
+                POINT end=new POINT {X=x2,Y=y2}; ScreenToClient(hwnd,ref end);
+                PostMessage(hwnd,WM_LBUTTONUP,IntPtr.Zero,MakeLParam(end.X,end.Y));
             }
         } else if(action=="wait")Thread.Sleep(500);
         else throw new ArgumentException("Unbekannte Desktop-Aktion.");
+    }
+    public static void LaunchApp(string query) {
+        Dpi();CheckStop();
+        if(IsHud(Title(GetForegroundWindow())))throw new InvalidOperationException("NEXO darf keine eigenen Freigaben per Tastatur auslösen.");
+        Key(0x5B,false,0);Key(0x5B,true,0);
+        Thread.Sleep(500);CheckStop();
+        foreach(char c in query) {
+            CheckStop();
+            if(c=='\0'||c=='\n'||c=='\r')continue;
+            Key(0,false,c);Key(0,true,c);
+        }
+        Thread.Sleep(300);CheckStop();
+        Key(0x0D,false,0);Key(0x0D,true,0);
     }
 }
