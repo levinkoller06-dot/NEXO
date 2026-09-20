@@ -20,7 +20,7 @@ try {
     $url = "http://127.0.0.1:$port"
     $health = $null
     try { $health = Invoke-RestMethod "$url/api/health" -TimeoutSec 2 } catch {}
-    if (-not $health -or $health.version -ne 27) {
+    if (-not $health -or $health.version -ne 28) {
         # Never stop an unrelated process merely because it uses this port.
         $listeners = @(Get-NetTCPConnection -LocalPort $port -State Listen -ErrorAction SilentlyContinue)
         foreach ($listener in $listeners) {
@@ -38,7 +38,7 @@ try {
         for ($attempt=0; $attempt -lt 30; $attempt++) {
             try {
                 $health=Invoke-RestMethod "$url/api/health" -TimeoutSec 1
-                if ($health.version -eq 27) { $healthy=$true; break }
+                if ($health.version -eq 28) { $healthy=$true; break }
             } catch {}
             Start-Sleep -Milliseconds 200
         }

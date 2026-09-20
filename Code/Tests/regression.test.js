@@ -127,6 +127,16 @@ test('R6 Gemini: all parallel calls, original thought signatures and IDs, then a
   assert.doesNotMatch(captured[0].url, /fake/); // API key stays in header
   assert.doesNotMatch(JSON.stringify(captured[0].body.tools), /additionalProperties/);
 });
+test('Gemini thinking stays off for plain chat but on for desktop control', async () => {
+  const captured = [];
+  const agent = createAgent({ env: { GEMINI_API_KEY: 'fake' }, fetchImpl: providerMock([
+    gemini([{ text: 'Chat-Antwort' }]), gemini([{ text: 'Control-Antwort' }])
+  ], captured) });
+  await agent.run({ ...requestBody, controlEnabled: false, execute: async () => ({ ok: true }) });
+  await agent.run({ ...requestBody, controlEnabled: true, execute: async () => ({ ok: true }) });
+  assert.equal(captured[0].body.generationConfig.thinkingConfig.thinkingBudget, 0);
+  assert.equal(captured[1].body.generationConfig.thinkingConfig.thinkingBudget, -1);
+});
 test('R6 OpenAI: multiple calls and follow-up rounds preserve tool ids', async () => {
   const captured = [], calls = [];
   const fn = id => ({ id, type: 'function', function: { name: 'set_mode', arguments: '{"mode":"focus"}' } });

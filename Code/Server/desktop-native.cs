@@ -186,6 +186,10 @@ public static class NexoDesktop {
         } else if(action=="wait")Thread.Sleep(500);
         else throw new ArgumentException("Unbekannte Desktop-Aktion.");
     }
+    // Deliberately does not press ENTER: Windows Search can fuzzy-match a query
+    // to something unrelated (or, for names like "Apple Music" that have no
+    // installed app, to whatever it currently prefers). The caller must look
+    // at the returned screenshot and confirm the top result itself.
     public static void LaunchApp(string query) {
         Dpi();CheckStop();
         if(IsHud(Title(GetForegroundWindow())))throw new InvalidOperationException("NEXO darf keine eigenen Freigaben per Tastatur auslösen.");
@@ -196,7 +200,6 @@ public static class NexoDesktop {
             if(c=='\0'||c=='\n'||c=='\r')continue;
             Key(0,false,c);Key(0,true,c);
         }
-        Thread.Sleep(300);CheckStop();
-        Key(0x0D,false,0);Key(0x0D,true,0);
+        Thread.Sleep(300);
     }
 }
