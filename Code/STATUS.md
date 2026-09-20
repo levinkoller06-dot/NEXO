@@ -31,7 +31,7 @@ Die sieben Befunde aus Schritt 019 wurden bearbeitet. Die bisherige App-Liste wu
 - Keine Kamera-Verfolgung, lautgenaue Lippensynchronisation, dauerhafte Erinnerung, Anmeldung über Geräte, Kalenderanbindung, Handy-App, Push oder Telefonie.
 - Notizen bleiben browserlokal; kein Schreiben nach Obsidian aus der App.
 
-## Nachweise aus Schritt 020
+## Nachweise aus Schritt 021
 - 31 Regressionstests erfolgreich: automatische Sitzungsfreigabe, Entfernen des Gesprächsfensters, Ent-/Stummschaltung einschließlich `aborted`-Recovery sowie die bisherigen R1–R7-Fälle.
 - Windows-Helfer mit -CheckOnly kompiliert, native INPUT-Struktur auf diesem Windows-System 40 Byte.
 - Starthelfer mit -CheckOnly geprüft: Node vorhanden, Port 4790.
