@@ -1,6 +1,6 @@
 # Schritt 021 – HUD vereinfacht und Mikrofon repariert
 
-Stand: 20.09.2026  
+Stand: 20.09.2026
 Ausgangspunkt: [[020 2026-09-20 KI-Desktopsteuerung und Fehlerbehebung]]
 
 ## Auftrag
