@@ -17,9 +17,9 @@ function fakeBridge() {
     async act(a) { calls.push(a); return { ok: true }; }
   };
 }
-async function fixture(t, run = async () => ({ reply: 'Test', toolLog: [] })) {
+async function fixture(t, run = async () => ({ reply: 'Test', toolLog: [] }), { env = {}, fetchImpl } = {}) {
   const bridge = fakeBridge();
-  const app = createNexoServer({ env: {}, bridge, agent: { models: { openai: 'test', gemini: 'test' }, run } });
+  const app = createNexoServer({ env, bridge, agent: { models: { openai: 'test', gemini: 'test' }, run }, ...(fetchImpl ? { fetchImpl } : {}) });
   await new Promise(resolve => app.server.listen(0, '127.0.0.1', resolve));
   t.after(() => new Promise(resolve => { app.stopAll(); app.server.closeAllConnections(); app.server.close(resolve); }));
   const base = 'http://127.0.0.1:' + app.server.address().port;
@@ -132,7 +132,7 @@ test('R6 OpenAI: multiple calls and follow-up rounds preserve tool ids', async (
   const agent = createAgent({ env: { OPENAI_API_KEY: 'fake' }, fetchImpl: providerMock([
     openai({ tool_calls: [fn('a'), fn('b')], content: null }), openai({ tool_calls: [fn('c')], content: null }), openai({ content: 'Fertig' })
   ], captured) });
-  const result = await agent.run({ ...requestBody, mode: 'standby', execute: async () => { calls.push(1); return { ok: true }; } });
+  const result = await agent.run({ ...requestBody, mode: 'energy', execute: async () => { calls.push(1); return { ok: true }; } });
   assert.equal(calls.length, 3); assert.equal(result.reply, 'Fertig');
   assert.deepEqual(captured[1].body.messages.filter(m => m.role === 'tool').map(m => m.tool_call_id), ['a', 'b']);
 });
@@ -282,7 +282,7 @@ test('OpenAI vision sends an image input after tool results, never as a text blo
   const agent = createAgent({ env: { OPENAI_API_KEY: 'fake' }, fetchImpl: providerMock([
     openai({ content: null, tool_calls: [{ id: 'vision', type: 'function', function: { name: 'computer_observe', arguments: '{}' } }] }), openai({ content: 'Bild gesehen' })
   ], captured) });
-  await agent.run({ ...requestBody, mode: 'standby', controlEnabled: true, execute: async () => ({ ok: true, frameId: 'frame2', image: 'FAKE', mimeType: 'image/jpeg' }) });
+  await agent.run({ ...requestBody, mode: 'energy', controlEnabled: true, execute: async () => ({ ok: true, frameId: 'frame2', image: 'FAKE', mimeType: 'image/jpeg' }) });
   assert.equal(captured[1].body.messages.at(-1).content[1].image_url.url, 'data:image/jpeg;base64,FAKE');
   assert.equal(captured[1].body.messages.at(-2).role, 'tool');
 });
@@ -292,6 +292,29 @@ test('Gemini voice fallback sends audio as inline data', async () => {
   const result = await agent.run({ ...requestBody, mode: 'standby', providerOverride: 'gemini', audio: { mimeType: 'audio/webm', data: 'AAAA' }, execute: async () => ({ ok: true }) });
   assert.equal(result.reply, 'Verstanden');
   assert.deepEqual(captured[0].body.contents.at(-1).parts.at(-1), { inlineData: { mimeType: 'audio/webm', data: 'AAAA' } });
+});
+test('Speech endpoint requires a configured Gemini key', async t => {
+  const f = await fixture(t);
+  assert.equal((await f.post('/api/speech', { text: 'Hallo' })).status, 503);
+});
+test('Speech endpoint wraps Gemini PCM audio as WAV and never leaks the key', async t => {
+  const pcm = Buffer.from([1, 2, 3, 4]).toString('base64');
+  const captured = [];
+  const fetchImpl = async (url, opts) => {
+    captured.push({ url, opts });
+    return { ok: true, json: async () => ({ candidates: [{ content: { parts: [{ inlineData: { mimeType: 'audio/L16;rate=24000', data: pcm } }] } }] }) };
+  };
+  const f = await fixture(t, undefined, { env: { GEMINI_API_KEY: 'fake-key' }, fetchImpl });
+  const res = await f.post('/api/speech', { text: 'Hallo NEXO' });
+  assert.equal(res.status, 200);
+  assert.equal(res.headers.get('content-type'), 'audio/wav');
+  const body = Buffer.from(await res.arrayBuffer());
+  assert.equal(body.toString('ascii', 0, 4), 'RIFF');
+  assert.equal(body.toString('ascii', 8, 12), 'WAVE');
+  assert.deepEqual(body.subarray(44), Buffer.from([1, 2, 3, 4]));
+  assert.match(captured[0].url, /gemini-2\.5-flash-preview-tts:generateContent$/);
+  assert.equal(captured[0].opts.headers['x-goog-api-key'], 'fake-key');
+  assert.equal((await f.post('/api/speech', { text: '' })).status, 400);
 });
 test('Stop during observation discards the image and invalidates the frame', async () => {
   const bridge = fakeBridge(); let resolve;

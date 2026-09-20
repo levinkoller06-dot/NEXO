@@ -1,14 +1,14 @@
 # NEXO – aktueller Projektstand
 
-Stand: 20.09.2026 · Schritt 023
+Stand: 20.09.2026 · Schritt 024
 
 ## Aktueller Auftrag und Ergebnis
-Die sieben Befunde aus Schritt 019 wurden bearbeitet. Die bisherige App-Liste wurde durch allgemeine, von der KI ausgewählte Bildschirm-, Maus- und Tastaturaktionen ersetzt. Der Nutzer hat diese Erweiterung ausdrücklich beauftragt. Historische Aussagen aus Schritt 018 zur fehlenden Maussteuerung beschreiben nicht mehr den aktuellen Stand.
+Der Sprachknopf war durch einen `Illegal invocation`-Fehler in `MicController` (entkoppelte `setTimeout`/`clearTimeout`) komplett tot; behoben. Sprachausgabe läuft jetzt über Gemini-TTS (männliche Stimme "Charon") statt ElevenLabs, das am Free-Tier-Library-Voice-Limit scheiterte. Gemini-"Thinking" ist für Chat deaktiviert, Sprachausgabe wird satzweise gestreamt – beides senkt die Antwortzeit spürbar. `standby` nutzt jetzt Gemini, `energy` bleibt OpenAI. UI: Statuszeile ist jetzt sichtbar, Mikrofon startet automatisch, drei nicht mehr benötigte Knöpfe entfernt.
 
 ## Implementiert
 - Startbares Windows-HUD mit dem bestehenden Kopf aus 99.220 3D-Modell-Partikeln, Farbwechsel, Großansicht, Timer und Browsernotizen.
-- Cloud-Modelle mit lokaler Oberfläche und lokalem Node-Server: Fokus → Gemini; Bereit/Energie → OpenAI. Modelle/Keys stehen in Server/.env. Kein in der Cloud gehosteter NEXO-Core.
-- Sprachaufträge, begrenzter Gesprächsverlauf im Kern, Browser-TTS und Mundanimation beim Sprechen.
+- Cloud-Modelle mit lokaler Oberfläche und lokalem Node-Server: Fokus/Bereit → Gemini; Energie → OpenAI. Modelle/Keys stehen in Server/.env. Kein in der Cloud gehosteter NEXO-Core.
+- Sprachaufträge, begrenzter Gesprächsverlauf im Kern, Sprachausgabe über Gemini-TTS (`/api/speech`, Stimme konfigurierbar über `GEMINI_TTS_VOICE`) mit Browser-TTS als Fallback, satzweises Streaming für schnelleren Sprechbeginn, und Mundanimation beim Sprechen.
 - Das sichtbare Gesprächsfenster und das Texteingabefeld sind entfernt; der Auftrag läuft über das Mikrofon.
 - Separate Zustände für Gesprächswunsch, tatsächliches Mikrofon, laufenden Auftrag und Wiedergabe. Das Mikrofon pausiert vor der Netzwerkanfrage. Client-Warteschlange und serverweite Auftragssperre verhindern parallele PC-Aktionen.
 - KI-Werkzeugschleife für beide Anbieter mit mehreren Runden und vollständigen Werkzeugergebnissen. Gemini-Signaturen und IDs bleiben erhalten.
@@ -31,13 +31,12 @@ Die sieben Befunde aus Schritt 019 wurden bearbeitet. Die bisherige App-Liste wu
 - Keine Kamera-Verfolgung, lautgenaue Lippensynchronisation, dauerhafte Erinnerung, Anmeldung über Geräte, Kalenderanbindung, Handy-App, Push oder Telefonie.
 - Notizen bleiben browserlokal; kein Schreiben nach Obsidian aus der App.
 
-## Nachweise aus Schritt 021
-- 33 Regressionstests erfolgreich: automatische Sitzungsfreigabe, Entfernen des Gesprächsfensters und alter Status-Texte, Ent-/Stummschaltung einschließlich `aborted`-Recovery, Gemini-Audio-Fallback sowie die bisherigen R1–R7-Fälle.
-- Windows-Helfer mit -CheckOnly kompiliert, native INPUT-Struktur auf diesem Windows-System 40 Byte.
-- Starthelfer mit -CheckOnly geprüft: Node vorhanden, Port 4790.
-- Echter Gemini-Aufruf mit künstlichem Testbild: computer_observe → set_mode → Antwort OK erfolgreich. Keine echten Desktop-Bilder übertragen oder PC-Aktionen dabei ausgeführt.
-- Echter OpenAI-Aufruf: Anbieter antwortet 429, Guthaben fehlt. OpenAI-Werkzeug-/Bildablauf mit simulierten Antworten getestet.
-- JavaScript-Syntax, HTML-Verweise und Git-Diff geprüft.
+## Nachweise aus Schritt 024
+- 35 Regressionstests erfolgreich (2 neu für `/api/speech`, 2 angepasst wegen Standby→Gemini).
+- Mikrofon-Bug live im Browser reproduziert und nach dem Fix verifiziert (kein `Illegal invocation` mehr, Berechtigungsanfrage wird erreicht).
+- `/api/speech` live gegen echte Gemini-API getestet: gültige WAV-Datei erhalten und angehört.
+- `/api/chat` in Standby live gegen echte Gemini-API getestet; Latenz mit/ohne `thinkingConfig.thinkingBudget:0` verglichen (2,4s → 1,3s bei trivialer Anfrage).
+- Echter OpenAI-Aufruf erneut geprüft: weiterhin 429 `insufficient_quota`, Guthaben fehlt weiterhin.
 
 ## Orientierung
 Pfade ab Repository-Stamm:
@@ -47,8 +46,8 @@ Pfade ab Repository-Stamm:
 - Code/Server/desktop.js, desktop.ps1, desktop-native.cs: Windows-Steuerung.
 - Code/Server/launch.ps1: Start und Versionsprüfung.
 - Code/Tests/regression.test.js: Tests ohne echte Desktop-Aktionen.
-- Planung/NEXO-Obsidian-Plan/Schritte/023 2026-09-20 Audio-Fallback für Edge-App ergänzt.md: vollständige Übergabe.
+- Planung/NEXO-Obsidian-Plan/Schritte/024 2026-09-20 Mikrofon-Fix, Gemini-Stimme und Tempo.md: vollständige Übergabe.
 - Planung/NEXO-Obsidian-Plan/NEXO Planung und Ziel.md: langfristiges Ziel.
 
 ## Als Nächstes
-NEXO starten.cmd öffnen, Fokus wählen, Mikrofon einschalten und einen einfachen Auftrag testen. Danach tatsächliche Klickgenauigkeit, Mikrofon, globalen Stopp und Darstellung prüfen. Weitere Umsetzung erfolgt nur nach Auftrag.
+NEXO starten.cmd neu starten (Serverversion 26), Mikrofon sollte automatisch aktiv sein, Statuszeile über dem Kopf beobachten, kurze und offene Fragen testen, neue Stimme und Antwortzeit beurteilen. "Energie" schlägt ohne neues OpenAI-Guthaben fehl. Weitere Umsetzung erfolgt nur nach Auftrag.

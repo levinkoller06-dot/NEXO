@@ -14,6 +14,15 @@ window.NexoApi = (() => {
   return {
     ready,
     async get(route, options) { await ready(); return raw(route, options); },
-    async post(route, body, options = {}) { await ready(); return raw(route, { ...options, method: 'POST', body: JSON.stringify(body) }); }
+    async post(route, body, options = {}) { await ready(); return raw(route, { ...options, method: 'POST', body: JSON.stringify(body) }); },
+    async postBlob(route, body, options = {}) {
+      await ready();
+      const res = await fetch(route, { ...options, method: 'POST', headers: { 'Content-Type': 'application/json', ...(token ? { 'X-Nexo-Token': token } : {}), ...options.headers }, body: JSON.stringify(body) });
+      if (!res.ok) {
+        let data = {}; try { data = await res.json(); } catch {}
+        throw Object.assign(new Error(data.error || 'Serverfehler ' + res.status), { status: res.status, stopped: data.stopped });
+      }
+      return res.blob();
+    }
   };
 })();

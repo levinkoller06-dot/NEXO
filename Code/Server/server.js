@@ -4,7 +4,7 @@ const fs = require('fs');
 const path = require('path');
 const crypto = require('crypto');
 const { DesktopController, checkAbort } = require('./desktop');
-const { createAgent, MODE_PROVIDER } = require('./agent');
+const { createAgent, MODE_PROVIDER, synthesizeSpeech } = require('./agent');
 
 function loadEnv(file, env = process.env) {
   if (!fs.existsSync(file)) return;
@@ -58,7 +58,7 @@ function readJson(req, maxBytes = 65536) {
     });
   });
 }
-function createNexoServer({ env = process.env, bridge, agent = createAgent({ env }), appDir = path.join(__dirname, '..', 'App') } = {}) {
+function createNexoServer({ env = process.env, bridge, agent = createAgent({ env }), appDir = path.join(__dirname, '..', 'App'), fetchImpl = fetch } = {}) {
   const sessions = new Map();
   let job = null;
   const desktop = new DesktopController({ bridge, onStop: reason => stopAll(reason) });
@@ -118,14 +118,14 @@ function createNexoServer({ env = process.env, bridge, agent = createAgent({ env
   const server = http.createServer(async (req, res) => {
     res.setHeader('X-Content-Type-Options', 'nosniff');
     res.setHeader('Referrer-Policy', 'no-referrer');
-    res.setHeader('Content-Security-Policy', "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self'; object-src 'none'; base-uri 'none'; frame-ancestors 'none'");
+    res.setHeader('Content-Security-Policy', "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; media-src 'self' blob:; connect-src 'self'; object-src 'none'; base-uri 'none'; frame-ancestors 'none'");
     try {
       checkRequest(req);
       let route;
       try { route = decodeURIComponent(req.url.split('?')[0]); } catch { throw failure(400, 'Ungültige URL-Codierung.'); }
       if (req.method === 'GET' && route === '/api/health') {
         return json(res, 200, { ok: true, modeProvider: MODE_PROVIDER, models: agent.models,
-          providers: { openai: !!env.OPENAI_API_KEY, gemini: !!env.GEMINI_API_KEY }, version: 23 });
+          providers: { openai: !!env.OPENAI_API_KEY, gemini: !!env.GEMINI_API_KEY }, version: 26 });
       }
       if (req.method === 'GET' && route === '/api/session') {
         if (sessions.size >= 16) throw failure(429, 'Zu viele offene Sitzungen. NEXO-Fenster schließen.');
@@ -156,6 +156,16 @@ function createNexoServer({ env = process.env, bridge, agent = createAgent({ env
         if (typeof body.approved !== 'boolean' || typeof body.id !== 'string') throw failure(400, 'Ungültige Bestätigung.');
         desktop.answerApproval(current.id, body.id, body.approved);
         return json(res, 200, { ok: true });
+      }
+      if (route === '/api/speech') {
+        if (!env.GEMINI_API_KEY) throw failure(503, 'Für Sprachausgabe ist ein Gemini-Key in Server/.env nötig.');
+        if (typeof body.text !== 'string' || !body.text.trim() || body.text.length > 4000) throw failure(400, 'Ungültiger Text für Sprachausgabe.');
+        let audio;
+        try { audio = await synthesizeSpeech({ env, fetchImpl }, body.text.trim()); }
+        catch (err) { throw failure(502, err.message); }
+        if (res.destroyed || res.writableEnded) return;
+        res.writeHead(200, { 'Content-Type': 'audio/wav', 'Cache-Control': 'no-store' });
+        return res.end(audio);
       }
       if (route !== '/api/chat' && !isVoice) throw failure(404, 'Schnittstelle nicht gefunden.');
       const messages = validateMessages(body.messages);

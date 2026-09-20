@@ -2,10 +2,8 @@
 const conversationHistory = [];
 const SpeechRecognitionImpl = window.SpeechRecognition || window.webkitSpeechRecognition;
 let mic = null, recorder = null, recorderStream = null, recorderChunks = [], busy = false, cancelSpeech = () => {}, lastModeEvent = null;
-function setTalkStatus() {}
 function showError(err) {
   $('state').textContent = String(err.message || err).slice(0, 190);
-  setTalkStatus('FEHLER');
 }
 function addTurn(role, text) {
   conversationHistory.push({ role, content: text });
@@ -18,7 +16,7 @@ function addTurn(role, text) {
   while (list.children.length > 60) list.firstElementChild.remove();
   list.scrollTop = list.scrollHeight;
 }
-function say(text, signal) {
+function sayWithBrowserVoice(text, signal) {
   if (!window.speechSynthesis || signal.aborted) return Promise.resolve();
   cancelSpeech();
   return new Promise(resolve => {
@@ -33,9 +31,54 @@ function say(text, signal) {
     const timer = setTimeout(cancel, 90000);
     cancelSpeech = cancel; signal.addEventListener('abort', cancel, { once: true });
     utter.onend = utter.onerror = done; utter.onstart = () => { if (!finished) speaking = true; };
-    setTalkStatus('SPRICHT'); $('state').textContent = 'NEXO spricht.';
+    $('state').textContent = 'NEXO spricht.';
     speechSynthesis.speak(utter);
   });
+}
+// Split into sentence-sized chunks so the first chunk's (much shorter, much
+// faster) audio can start playing while later chunks are still being
+// synthesized, instead of waiting for the whole reply's audio at once.
+function splitIntoSpeechChunks(text) {
+  return (text.match(/[^.!?\n]+[.!?\n]*/g) || [text]).map(s => s.trim()).filter(Boolean);
+}
+async function fetchSpeechBlob(text, signal) {
+  try { return await NexoApi.postBlob('/api/speech', { text }, { signal }); }
+  catch (error) {
+    if (signal.aborted) return null;
+    showError(new Error('Gemini-Sprachausgabe nicht erreichbar (' + (error.message || error) + '), nutze Browser-Stimme.'));
+    return null;
+  }
+}
+function playSpeechBlob(blob, signal) {
+  return new Promise(resolve => {
+    const audio = new Audio(URL.createObjectURL(blob));
+    let finished = false;
+    const done = () => {
+      if (finished) return; finished = true;
+      signal.removeEventListener('abort', cancel);
+      URL.revokeObjectURL(audio.src); resolve();
+    };
+    const cancel = () => { audio.pause(); done(); };
+    cancelSpeech = cancel; signal.addEventListener('abort', cancel, { once: true });
+    audio.onended = audio.onerror = done; audio.onplay = () => { if (!finished) speaking = true; };
+    audio.play().catch(done);
+  });
+}
+async function say(text, signal) {
+  if (signal.aborted) return;
+  cancelSpeech();
+  const chunks = splitIntoSpeechChunks(text);
+  if (!chunks.length) return;
+  $('state').textContent = 'NEXO spricht.';
+  let pending = fetchSpeechBlob(chunks[0], signal);
+  for (let i = 0; i < chunks.length && !signal.aborted; i++) {
+    const blob = await pending;
+    if (signal.aborted) break;
+    pending = i + 1 < chunks.length ? fetchSpeechBlob(chunks[i + 1], signal) : null;
+    if (!blob) { await sayWithBrowserVoice(chunks.slice(i).join(' '), signal); break; }
+    await playSpeechBlob(blob, signal);
+  }
+  speaking = false; cancelSpeech = () => {};
 }
 const queue = new NexoConversationState.SerialQueue({
   onBusy(value) {
@@ -43,13 +86,12 @@ const queue = new NexoConversationState.SerialQueue({
     const send = document.getElementById('send'), command = document.getElementById('command');
     if (send) send.disabled = value;
     if (command) command.setAttribute('aria-busy', String(value));
-    if (!value) { setTalkStatus(mic?.wanted ? 'HÖRT ZU' : 'AUS'); }
   },
   onError: showError,
   async run(text, signal) {
     const audio = text && typeof text === 'object' && text.kind === 'audio' ? text : null;
     addTurn('user', audio ? 'Sprachnachricht' : text);
-    $('state').textContent = 'NEXO arbeitet …'; setTalkStatus('ARBEITET');
+    $('state').textContent = 'Denkt nach …';
     const payload = { mode, messages: conversationHistory.map(h => ({ ...h })) };
     if (audio) Object.assign(payload, { audio: audio.data, mimeType: audio.mimeType });
     const data = await NexoApi.post(audio ? '/api/voice' : '/api/chat', payload, { signal });
@@ -102,16 +144,19 @@ if (SpeechRecognitionImpl) {
     }
     if (text.trim()) queue.push(text.trim().slice(0, 8000));
   };
-  $('talk').onclick = async () => {
-    if (mic.wanted) { mic.setWanted(false); return; }
-    // Start recognition directly from the click. Some Edge app windows keep
-    // getUserMedia pending while the permission bubble is hidden; waiting for
-    // that promise made the button appear dead. The permission check runs in
-    // parallel and stops recognition only when access is definitely denied.
+  // Start recognition directly, without waiting on the permission promise.
+  // Some Edge app windows keep getUserMedia pending while the permission
+  // bubble is hidden; waiting for that promise made the button appear dead.
+  // The permission check runs in parallel and stops recognition only when
+  // access is definitely denied. Used both to switch the mic on by default
+  // at startup and for the manual toggle.
+  async function startListening() {
     mic.setWanted(true);
     const allowed = await ensureMicrophonePermission();
     if (!allowed && mic.wanted) mic.setWanted(false);
-  };
+  }
+  $('talk').onclick = () => { if (mic.wanted) { mic.setWanted(false); return; } void startListening(); };
+  void startListening();
   document.addEventListener('visibilitychange', () => {
     if (!document.hidden && mic.wanted && !busy) mic.schedule();
   });
@@ -150,7 +195,7 @@ if (SpeechRecognitionImpl) {
   if (window.MediaRecorder && navigator.mediaDevices?.getUserMedia) $('talk').onclick = () => recorder ? stopRecording() : void startRecording();
   else { $('talk').disabled = true; $('talk').classList.add('muted'); }
 }
-function stopLocally() { mic?.setWanted(false); if (recorder) { recorder.onstop = null; recorder.ondataavailable = null; try { recorder.stop(); } catch {} recorder = null; } recorderStream?.getTracks().forEach(track => track.stop()); recorderStream = null; queue.stop(); cancelSpeech(); $('state').textContent = 'Gestoppt.'; setTalkStatus('AUS'); }
+function stopLocally() { mic?.setWanted(false); if (recorder) { recorder.onstop = null; recorder.ondataavailable = null; try { recorder.stop(); } catch {} recorder = null; } recorderStream?.getTracks().forEach(track => track.stop()); recorderStream = null; queue.stop(); cancelSpeech(); $('state').textContent = 'Gestoppt.'; }
 window.nexoStop = async () => {
   stopLocally();
   try { await NexoApi.post('/api/stop', {}); } catch (err) { showError(err); }
@@ -177,7 +222,7 @@ async function poll() {
       $('approval-action').textContent = a.action + (a.key ? ': ' + a.key : a.text ? ': ' + a.text : a.x !== undefined ? ' bei ' + a.x + ', ' + a.y : '');
       $('approval-image').src = 'data:image/jpeg;base64,' + data.approval.image;
       if (!$('approval').open) $('approval').showModal();
-      if (queue.controller) void say('Bitte bestätige den nächsten Schritt im NEXO-Fenster.', queue.controller.signal).then(() => { if (approvalId) setTalkStatus('BESTÄTIGUNG'); });
+      if (queue.controller) void say('Bitte bestätige den nächsten Schritt im NEXO-Fenster.', queue.controller.signal);
     } else if (!data.approval && approvalId) {
       approvalId = null; $('approval').close(); $('approval-image').removeAttribute('src');
     }

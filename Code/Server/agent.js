@@ -1,6 +1,6 @@
 'use strict';
 const { checkAbort } = require('./desktop');
-const MODE_PROVIDER = { standby: 'openai', focus: 'gemini', energy: 'openai' };
+const MODE_PROVIDER = { standby: 'gemini', focus: 'gemini', energy: 'openai' };
 const SYSTEM_PROMPT = [
   'Du bist NEXO, ein persönlicher Assistent. Antworte kurz, klar und auf Deutsch.',
   'Für PC-Aufgaben entscheidest DU anhand des aktuellen Bildschirms über jeden Maus- oder Tastaturschritt. Es gibt keine app-spezifischen Öffnungsroutinen.',
@@ -54,7 +54,7 @@ function createAgent({ env = process.env, fetchImpl = fetch, maxRounds = 24, max
     const body = provider === 'openai'
       ? { model: models.openai, max_tokens: 900, messages: turns, tools, parallel_tool_calls: false }
       : { contents: turns, systemInstruction: { parts: [{ text: SYSTEM_PROMPT }] },
-        tools: [{ functionDeclarations: tools }], generationConfig: { maxOutputTokens: 1200 } };
+        tools: [{ functionDeclarations: tools }], generationConfig: { maxOutputTokens: 1200, thinkingConfig: { thinkingBudget: 0 } } };
     const url = provider === 'openai' ? 'https://api.openai.com/v1/chat/completions'
       : 'https://generativelanguage.googleapis.com/v1beta/models/' + encodeURIComponent(models.gemini) + ':generateContent';
     const timeout = AbortSignal.timeout(45000);
@@ -148,4 +148,39 @@ function createAgent({ env = process.env, fetchImpl = fetch, maxRounds = 24, max
   }
   return { run, models };
 }
-module.exports = { createAgent, MODE_PROVIDER, TOOL_DEFS, SYSTEM_PROMPT };
+// Gemini TTS returns headerless 16-bit/24kHz/mono PCM; browsers cannot play
+// that without a container, so it gets wrapped in a minimal WAV header here.
+function wavFromPcm16(pcm, sampleRate = 24000, channels = 1) {
+  const blockAlign = channels * 2, byteRate = sampleRate * blockAlign;
+  const header = Buffer.alloc(44);
+  header.write('RIFF', 0); header.writeUInt32LE(36 + pcm.length, 4); header.write('WAVE', 8);
+  header.write('fmt ', 12); header.writeUInt32LE(16, 16); header.writeUInt16LE(1, 20);
+  header.writeUInt16LE(channels, 22); header.writeUInt32LE(sampleRate, 24);
+  header.writeUInt32LE(byteRate, 28); header.writeUInt16LE(blockAlign, 32); header.writeUInt16LE(16, 34);
+  header.write('data', 36); header.writeUInt32LE(pcm.length, 40);
+  return Buffer.concat([header, pcm]);
+}
+async function synthesizeSpeech({ env = process.env, fetchImpl = fetch } = {}, text, signal) {
+  const key = env.GEMINI_API_KEY;
+  if (!key) throw new Error('Gemini-Key fehlt in Server/.env.');
+  const model = env.GEMINI_TTS_MODEL || 'gemini-2.5-flash-preview-tts';
+  const voiceName = env.GEMINI_TTS_VOICE || 'Kore';
+  const timeout = AbortSignal.timeout(30000);
+  const apiRes = await fetchImpl('https://generativelanguage.googleapis.com/v1beta/models/' + encodeURIComponent(model) + ':generateContent', {
+    method: 'POST', signal: signal ? AbortSignal.any([signal, timeout]) : timeout,
+    headers: { 'x-goog-api-key': key, 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      contents: [{ parts: [{ text }] }],
+      generationConfig: { responseModalities: ['AUDIO'], speechConfig: { voiceConfig: { prebuiltVoiceConfig: { voiceName } } } }
+    })
+  });
+  const data = await apiRes.json().catch(() => null);
+  if (!apiRes.ok) {
+    const detail = String(data?.error?.message || 'Gemini TTS nicht erreichbar.').split(key).join('[entfernt]').slice(0, 220);
+    throw new Error('Gemini TTS (' + apiRes.status + '): ' + detail);
+  }
+  const inline = data?.candidates?.[0]?.content?.parts?.[0]?.inlineData;
+  if (!inline?.data) throw new Error('Gemini TTS hat kein Audio geliefert.');
+  return wavFromPcm16(Buffer.from(inline.data, 'base64'));
+}
+module.exports = { createAgent, MODE_PROVIDER, TOOL_DEFS, SYSTEM_PROMPT, synthesizeSpeech };

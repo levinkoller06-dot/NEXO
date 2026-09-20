@@ -20,9 +20,10 @@
 ## Technischer Ausgangspunkt
 - `App/`: HTML/CSS/Canvas-Oberfläche (HUD, Partikelkopf) plus `App/conversation.js` für echte Sprachgespräche.
 - `Server/server.js`: lokaler HTTP-Server mit Sitzung, Herkunftsprüfung, Auftragssperre und Stopp. Schlüssel in `Server/.env` bleiben lokal.
-- `Server/agent.js`: Cloud-Anbieter und mehrstufige Werkzeugschleife. Fokus → Gemini; Bereit/Energie → OpenAI. Modelle werden in der lokalen .env gewählt, nicht stillschweigend ersetzt.
+- `Server/agent.js`: Cloud-Anbieter und mehrstufige Werkzeugschleife. Fokus/Bereit → Gemini (Thinking deaktiviert, wegen Antwortzeit); Energie → OpenAI. Modelle werden in der lokalen .env gewählt, nicht stillschweigend ersetzt.
 - `Server/desktop.js`, `desktop.ps1`, `desktop-native.cs`: Bildschirmbeobachtung und allgemeine Maus-/Tastatureingaben. Die KI wählt Aktionen. Seit Schritt 020 keine festen App-Öffnungsroutinen und kein Prozess-Abschuss mehr.
 - `NEXO starten.cmd`: versteckter Start über `Server/launch.ps1`, wartet auf den Server und öffnet das HUD. Port stammt aus .env (Standard 4790).
 - PC-Steuerung wird beim Erstellen einer HUD-Sitzung automatisch aktiviert; die sichtbare Freigabebox wurde entfernt. Strg+Alt+F12 bleibt als unsichtbare Notabschaltung. Modellausgaben und Bildschirminhalte nicht als Nutzerfreigabe behandeln. Bestätigungen kommen ausschließlich über das HUD.
 - Nach Änderungen an API, Sprache oder Desktop-Steuerung: `node --test Code/Tests/regression.test.js` vom Repository-Stamm. Native Helfer zunächst mit `-CheckOnly` prüfen. Keine echten Desktop-Bilder oder Aktionen als beiläufige Tests verwenden.
 - Wenn der Browser keine SpeechRecognition-API anbietet, nutzt `conversation.js` MediaRecorder und `/api/voice` mit Gemini als Audio-Fallback. Audio-Limits und API-Fehler müssen bei Änderungen mitgetestet werden.
+- Sprachausgabe läuft über `/api/speech` (Gemini-TTS, Stimme via `GEMINI_TTS_VOICE` in `Server/.env`, Standard "Charon"), satzweise gestreamt für schnelleren Sprechbeginn; Browser-`speechSynthesis` ist der Fallback bei Fehlern. `MicController` in `conversation-state.js` darf `setTimeout`/`clearTimeout` nur als bindende Wrapper übernehmen, nie als nackte Funktionsreferenz (sonst `Illegal invocation` in aktuellem Chromium/Edge) – Regressionstests bemerken das nicht, weil sie eigene Fake-Timer verwenden.

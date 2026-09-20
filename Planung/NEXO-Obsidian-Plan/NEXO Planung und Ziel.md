@@ -1,9 +1,9 @@
 # NEXO Planung und Ziel
 
-Stand: 20.09.2026 · Schritt 023 (Audio-Fallback für Edge-App ergänzt)
+Stand: 20.09.2026 · Schritt 024 (Mikrofon-Fix, Gemini-Stimme und Tempo)
 Zielbild: Cloud-basierte persönliche Assistenz für PC, Handy und Telefon
 
-Die Nummern 000–015 unten sind Planungsphasen; die fortlaufenden Arbeitsnotizen unter `Schritte/` haben eine eigene Nummerierung. Zum aktuellen Code und seinen Grenzen siehe [[1 Aktueller Stand]], [[019 2026-09-20 Analyse der Aenderungen]], [[020 2026-09-20 KI-Desktopsteuerung und Fehlerbehebung]], [[021 2026-09-20 HUD vereinfacht und Mikrofon repariert]], [[022 2026-09-20 Mikrofonzugriff und HUD-Texte bereinigt]] und [[023 2026-09-20 Audio-Fallback für Edge-App ergänzt]].
+Die Nummern 000–015 unten sind Planungsphasen; die fortlaufenden Arbeitsnotizen unter `Schritte/` haben eine eigene Nummerierung. Zum aktuellen Code und seinen Grenzen siehe [[1 Aktueller Stand]], [[019 2026-09-20 Analyse der Aenderungen]], [[020 2026-09-20 KI-Desktopsteuerung und Fehlerbehebung]], [[021 2026-09-20 HUD vereinfacht und Mikrofon repariert]], [[022 2026-09-20 Mikrofonzugriff und HUD-Texte bereinigt]], [[023 2026-09-20 Audio-Fallback für Edge-App ergänzt]] und [[024 2026-09-20 Mikrofon-Fix, Gemini-Stimme und Tempo]].
 
 ## Das Ziel
 
@@ -204,4 +204,4 @@ Fertig, wenn: Ein Fehler keine stillen PC-Aktionen verursacht und der komplette 
 
 ## Aktueller nächster Schritt
 
-Als Nächstes die Desktopsteuerung praktisch im HUD testen: alte HUD-Sitzung schließen, NEXO neu starten, Mikrofonaufnahme starten und stoppen und eine harmlose Aufgabe ohne Speichern ausführen. Danach folgen Geräte-Paarung, dauerhafte Sitzungen und der Cloud-Core. [[023 2026-09-20 Audio-Fallback für Edge-App ergänzt]] enthält den aktuellen Testauftrag.
+Als Nächstes NEXO neu starten (Serverversion 26), das jetzt automatisch aktive Mikrofon, die sichtbare Statuszeile, die neue männliche Stimme und die Antwortzeit im echten Gespräch prüfen. Danach folgen Geräte-Paarung, dauerhafte Sitzungen und der Cloud-Core. [[024 2026-09-20 Mikrofon-Fix, Gemini-Stimme und Tempo]] enthält den aktuellen Testauftrag.

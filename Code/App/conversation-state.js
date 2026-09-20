@@ -5,7 +5,7 @@
   else root.NexoConversationState = api;
 })(typeof globalThis !== 'undefined' ? globalThis : this, function() {
   class MicController {
-    constructor({ recognition, onChange = () => {}, onError = () => {}, delay = setTimeout, clear = clearTimeout }) {
+    constructor({ recognition, onChange = () => {}, onError = () => {}, delay = (...a) => setTimeout(...a), clear = (...a) => clearTimeout(...a) }) {
       this.recognition = recognition; this.onChange = onChange; this.onError = onError;
       this.delay = delay; this.clear = clear; this.wanted = false; this.busy = false; this.actual = 'idle'; this.timer = null;
       recognition.onstart = () => { this.actual = 'listening'; this.sync(); };
