@@ -1,9 +1,9 @@
 # NEXO Planung und Ziel
 
-Stand: 20.09.2026 · Schritt 028 (Gemini-Live-API: Phase A und B)
+Stand: 20.09.2026 · Schritt 029 (web_answer und Prompt-Verschärfung)
 Zielbild: Cloud-basierte persönliche Assistenz für PC, Handy und Telefon
 
-Die Nummern 000–015 unten sind Planungsphasen; die fortlaufenden Arbeitsnotizen unter `Schritte/` haben eine eigene Nummerierung. Zum aktuellen Code und seinen Grenzen siehe [[1 Aktueller Stand]], [[019 2026-09-20 Analyse der Aenderungen]], [[020 2026-09-20 KI-Desktopsteuerung und Fehlerbehebung]], [[021 2026-09-20 HUD vereinfacht und Mikrofon repariert]], [[022 2026-09-20 Mikrofonzugriff und HUD-Texte bereinigt]], [[023 2026-09-20 Audio-Fallback für Edge-App ergänzt]], [[024 2026-09-20 Mikrofon-Fix, Gemini-Stimme und Tempo]], [[025 2026-09-20 Bewegungs-Fix, Stimmklaerung und unsichtbare Maus]], [[026 2026-09-20 Denkbudget fuer PC-Steuerung und sicheres launch_app]], [[027 2026-09-20 Karen-Techniken - UIA-Klicks, Websuche, Barge-in]] und [[028 2026-09-20 Live-API Phase A und B]].
+Die Nummern 000–015 unten sind Planungsphasen; die fortlaufenden Arbeitsnotizen unter `Schritte/` haben eine eigene Nummerierung. Zum aktuellen Code und seinen Grenzen siehe [[1 Aktueller Stand]], [[019 2026-09-20 Analyse der Aenderungen]], [[020 2026-09-20 KI-Desktopsteuerung und Fehlerbehebung]], [[021 2026-09-20 HUD vereinfacht und Mikrofon repariert]], [[022 2026-09-20 Mikrofonzugriff und HUD-Texte bereinigt]], [[023 2026-09-20 Audio-Fallback für Edge-App ergänzt]], [[024 2026-09-20 Mikrofon-Fix, Gemini-Stimme und Tempo]], [[025 2026-09-20 Bewegungs-Fix, Stimmklaerung und unsichtbare Maus]], [[026 2026-09-20 Denkbudget fuer PC-Steuerung und sicheres launch_app]], [[027 2026-09-20 Karen-Techniken - UIA-Klicks, Websuche, Barge-in]], [[028 2026-09-20 Live-API Phase A und B]] und [[029 2026-09-20 web_answer und Prompt-Verschaerfung]].
 
 ## Das Ziel
 
@@ -204,4 +204,4 @@ Fertig, wenn: Ein Fehler keine stillen PC-Aktionen verursacht und der komplette 
 
 ## Aktueller nächster Schritt
 
-NEXO wird auf die Gemini-Live-API umgebaut (Dauerverbindung wie im Referenzprojekt "Karen", Plan in `C:\Users\levin\.claude\plans\vectorized-purring-swing.md`). Phase A+B (Server-Verbindung, Werkzeugaufrufe, `focus_window`/`click_by_name`) sind fertig und live getestet. Als Nächstes Phase C: die Browser-Seite (Mikrofon-Dauerstream, Wiedergabe) – nur gemeinsam mit dem Nutzer am echten Gerät fertig zu testen. Bis dahin: NEXO neu starten (Serverversion 30, `npm install` im Server-Ordner) und `focus_window`/`click_by_name` im bestehenden Gespräch ausprobieren. [[028 2026-09-20 Live-API Phase A und B]] enthält Details.
+NEXO wird auf die Gemini-Live-API umgebaut (Dauerverbindung wie im Referenzprojekt "Karen", Plan in `C:\Users\levin\.claude\plans\vectorized-purring-swing.md`). Phase A+B (Server-Verbindung, Werkzeugaufrufe, `focus_window`/`click_by_name`) sind fertig und live getestet; zusätzlich `web_answer` (Wissens-/Nachrichtenfragen per Sprache beantworten, ohne etwas zu öffnen) und eine schärfere Systemprompt-Fassung gegen Mausklick-statt-launch_app und ungefragte Zusatzprogramme. Als Nächstes Phase C: die Browser-Seite (Mikrofon-Dauerstream, Wiedergabe) – der eigentliche Geschwindigkeitshebel, nur gemeinsam mit dem Nutzer am echten Gerät fertig zu testen. [[029 2026-09-20 web_answer und Prompt-Verschaerfung]] enthält Details.

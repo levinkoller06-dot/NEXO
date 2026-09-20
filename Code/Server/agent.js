@@ -4,9 +4,9 @@ const MODE_PROVIDER = { standby: 'gemini', focus: 'gemini', energy: 'openai' };
 const SYSTEM_PROMPT = [
   'Du bist NEXO, ein persönlicher Assistent. Antworte kurz, klar und auf Deutsch.',
   'Für PC-Aufgaben entscheidest DU anhand des aktuellen Bildschirms über jeden Maus- oder Tastaturschritt. Es gibt keine app-spezifischen Öffnungsroutinen.',
-  'Führe NUR aus, was der Nutzer tatsächlich verlangt hat. Öffne, schließe oder ändere niemals zusätzliche Programme oder Fenster "vorsichtshalber", "zur Übersicht" oder aus eigener Vermutung. Bei Unklarheit lieber nachfragen als zusätzlich handeln.',
-  'Zum Öffnen eines Programms oder einer Datei nutze launch_app (Suchbegriff): WIN drücken und Suchbegriff eintippen in einem Schritt, aber OHNE Enter. Sieh dir danach das Bild genau an und bestätige NUR den erkennbar richtigen obersten Treffer mit computer_action key=ENTER. Wirkt der Treffer falsch, fremd oder unsicher (z.B. Suche zeigt Web-Vorschläge statt der App), breche mit ESC ab und beschreibe dem Nutzer, dass die App nicht gefunden wurde, statt irgendetwas zu öffnen. Rufe launch_app pro Programm nur einmal auf; nicht mit wechselnden Suchbegriffen raten.',
-  'Für eine Websuche (z.B. "suche X bei Google") nutze search_web statt Browser zu öffnen und die Suchleiste anzuklicken.',
+  'Führe NUR aus, was der Nutzer tatsächlich verlangt hat. Öffne, schließe oder ändere NIEMALS ein zusätzliches Programm oder Fenster, das nicht ausdrücklich verlangt wurde, auch nicht "vorsichtshalber", "zur Übersicht", als vermuteter Zwischenschritt oder weil ein Suchtreffer danach aussieht. Jedes zusätzlich geöffnete Programm ist ein Fehler. Bei Unklarheit lieber nachfragen als zusätzlich handeln.',
+  'Zum Öffnen eines Programms oder einer Datei nutze IMMER launch_app, niemals einen Klick auf ein Taskleisten-/Desktop-Symbol oder Startmenü-Kachel. launch_app: WIN drücken und Suchbegriff eintippen in einem Schritt, aber OHNE Enter. Sieh dir danach das Bild genau an und bestätige NUR den erkennbar richtigen obersten Treffer mit computer_action key=ENTER. Wirkt der Treffer falsch, fremd oder unsicher (z.B. Suche zeigt ein anderes Programm, Web-Vorschläge oder Einstellungen statt der App), breche mit ESC ab und sag dem Nutzer ehrlich, dass die App nicht gefunden wurde, statt irgendetwas zu öffnen. Rufe launch_app pro Programm nur einmal auf; nicht mit wechselnden Suchbegriffen raten.',
+  'Zwei verschiedene Websuche-Werkzeuge: web_answer beantwortet eine Wissens-/Info-/Nachrichtenfrage (z.B. "was gibt es Neues", "wie ist das Wetter", "wer ist...") mit einer kurzen gesprochenen Antwort und öffnet dabei NICHTS. search_web öffnet dagegen sichtbar eine Google-Ergebnisseite im Browser – nur wenn der Nutzer ausdrücklich etwas im Browser sehen/öffnen will. Im Zweifel web_answer nutzen, das ist die Standarderwartung bei Fragen.',
   'Ablauf: computer_observe, dann genau eine begründete computer_action anhand der zurückgegebenen frameId. Nach jeder Aktion erhältst du ein neues Bild. Prüfe den Erfolg sichtbar, bevor du ihn behauptest. Erreiche das Ziel in möglichst wenigen Schritten, ohne Zwischenstopps, die nicht nötig sind.',
   'button ist standardmäßig left. Nutze right NUR, wenn der Auftrag ausdrücklich ein Kontextmenü/Rechtsklick verlangt oder du bereits siehst, dass ohne Kontextmenü nicht weiterzukommen ist.',
   'computer_action bewegt den für den Nutzer sichtbaren Mauszeiger standardmäßig NICHT (pointer=background, per Fensternachricht an das Zielfenster). Das funktioniert bei den meisten Programmen; bei Spielen, Canvas-Oberflächen oder wenn die Beobachtung keine Wirkung zeigt, dieselbe Aktion mit pointer=visible wiederholen.',
@@ -42,10 +42,16 @@ const TOOL_DEFS = [
       reason: { type: 'string', description: 'Kurze konkrete Beschreibung von Ziel und Wirkung.' }
     }, required: ['query', 'reason'], additionalProperties: false
   } },
-  { name: 'search_web', description: 'Öffnet eine Google-Suche für den Suchbegriff direkt im Standardbrowser, ohne Adressleiste/Suchfeld anzuklicken. Liefert danach ein neues Bildschirmbild.', parameters: {
+  { name: 'search_web', description: 'Öffnet eine Google-Suche für den Suchbegriff direkt im Standardbrowser, ohne Adressleiste/Suchfeld anzuklicken. Liefert danach ein neues Bildschirmbild. NICHT für Fragen verwenden, die eine gesprochene Antwort erwarten - dafür web_answer nutzen.', parameters: {
     type: 'object', properties: {
       query: { type: 'string', description: 'Suchbegriff.' },
       reason: { type: 'string', description: 'Kurze konkrete Beschreibung von Ziel und Wirkung.' }
+    }, required: ['query', 'reason'], additionalProperties: false
+  } },
+  { name: 'web_answer', description: 'Beantwortet eine Wissens-, Info- oder Nachrichtenfrage per Websuche und liefert eine kurze Textantwort zum Vorlesen. Öffnet KEINEN Browser, KEIN Fenster, KEINEN Tab - nur für PC-Aufgaben ungeeignet.', parameters: {
+    type: 'object', properties: {
+      query: { type: 'string', description: 'Die zu beantwortende Frage, in eigenen Worten als Suchanfrage formuliert.' },
+      reason: { type: 'string', description: 'Kurze konkrete Beschreibung, welche Frage beantwortet wird.' }
     }, required: ['query', 'reason'], additionalProperties: false
   } },
   { name: 'focus_window', description: 'Holt ein bestimmtes, bereits offenes Fensters gezielt nach vorne (per Fenstertitel), statt blind ALT+TAB zu drücken. Liefert danach ein neues Bildschirmbild.', parameters: {
@@ -108,7 +114,7 @@ function createAgent({ env = process.env, fetchImpl = fetch, maxRounds = 24, max
   }
   async function run({ messages, mode, providerOverride, audio, signal, execute, onTool = () => {}, controlEnabled = false }) {
     const provider = providerOverride || MODE_PROVIDER[mode] || 'openai';
-    const defs = TOOL_DEFS.filter(t => controlEnabled || t.name === 'set_mode');
+    const defs = TOOL_DEFS.filter(t => controlEnabled || t.name === 'set_mode' || t.name === 'web_answer');
     const upperTypes = value => {
       if (Array.isArray(value)) return value.map(upperTypes);
       if (!value || typeof value !== 'object') return value;
@@ -219,4 +225,32 @@ async function synthesizeSpeech({ env = process.env, fetchImpl = fetch } = {}, t
   if (!inline?.data) throw new Error('Gemini TTS hat kein Audio geliefert.');
   return wavFromPcm16(Buffer.from(inline.data, 'base64'));
 }
-module.exports = { createAgent, MODE_PROVIDER, TOOL_DEFS, SYSTEM_PROMPT, synthesizeSpeech };
+// A standalone call using Gemini's built-in google_search grounding, separate
+// from the tool-calling conversation itself (that tool schema can't be mixed
+// with custom function declarations in the same request). Used to answer
+// knowledge/news questions with real, current results and only a spoken
+// answer - never opens anything, unlike search_web.
+async function answerWithSearch({ env = process.env, fetchImpl = fetch } = {}, query, signal) {
+  const key = env.GEMINI_API_KEY;
+  if (!key) throw new Error('Gemini-Key fehlt in Server/.env.');
+  const model = env.GEMINI_MODEL || 'gemini-3.6-flash';
+  const timeout = AbortSignal.timeout(20000);
+  const apiRes = await fetchImpl('https://generativelanguage.googleapis.com/v1beta/models/' + encodeURIComponent(model) + ':generateContent', {
+    method: 'POST', signal: signal ? AbortSignal.any([signal, timeout]) : timeout,
+    headers: { 'x-goog-api-key': key, 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      contents: [{ role: 'user', parts: [{ text: query }] }],
+      tools: [{ google_search: {} }],
+      generationConfig: { maxOutputTokens: 500, thinkingConfig: { thinkingBudget: 0 } }
+    })
+  });
+  const data = await apiRes.json().catch(() => null);
+  if (!apiRes.ok) {
+    const detail = String(data?.error?.message || 'Websuche nicht erreichbar.').split(key).join('[entfernt]').slice(0, 220);
+    throw new Error('Websuche (' + apiRes.status + '): ' + detail);
+  }
+  const answer = (data?.candidates?.[0]?.content?.parts || []).map(p => p.text || '').join('').trim();
+  if (!answer) throw new Error('Websuche hat keine Antwort geliefert.');
+  return answer;
+}
+module.exports = { createAgent, MODE_PROVIDER, TOOL_DEFS, SYSTEM_PROMPT, synthesizeSpeech, answerWithSearch };

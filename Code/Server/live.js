@@ -24,7 +24,7 @@ function stripAdditionalProperties(value) {
 }
 
 function buildSetupMessage({ env, controlEnabled, resumeHandle }) {
-  const defs = TOOL_DEFS.filter(t => controlEnabled || t.name === 'set_mode');
+  const defs = TOOL_DEFS.filter(t => controlEnabled || t.name === 'set_mode' || t.name === 'web_answer');
   const model = env.GEMINI_LIVE_MODEL || 'gemini-2.5-flash-native-audio-preview-09-2025';
   const voiceName = env.GEMINI_TTS_VOICE || 'Charon';
   const setup = {

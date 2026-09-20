@@ -3,7 +3,7 @@ const { test } = require('node:test');
 const assert = require('node:assert/strict');
 const http = require('node:http');
 const { createNexoServer, validateMessages } = require('../Server/server');
-const { createAgent, TOOL_DEFS } = require('../Server/agent');
+const { createAgent, TOOL_DEFS, answerWithSearch } = require('../Server/agent');
 const { DesktopController, NativeBridge, validateAction, validateLaunch, validateWindowTarget } = require('../Server/desktop');
 const { MicController, SerialQueue } = require('../App/conversation-state');
 const { LiveSession, buildSetupMessage, stripAdditionalProperties } = require('../Server/live');
@@ -39,7 +39,7 @@ async function fixture(t, run = async () => ({ reply: 'Test', toolLog: [] }), { 
 const requestBody = { mode: 'focus', messages: [{ role: 'user', content: 'Testauftrag' }] };
 
 test('R1/R2: old process-launch/force-kill tools are absent', () => {
-  assert.deepEqual(TOOL_DEFS.map(t => t.name), ['set_mode', 'computer_observe', 'computer_action', 'launch_app', 'search_web', 'focus_window', 'click_by_name']);
+  assert.deepEqual(TOOL_DEFS.map(t => t.name), ['set_mode', 'computer_observe', 'computer_action', 'launch_app', 'search_web', 'web_answer', 'focus_window', 'click_by_name']);
   const fs = require('fs');
   const source = fs.readFileSync(require.resolve('../Server/server'), 'utf8');
   assert.doesNotMatch(source, /taskkill|ALLOWED_APPS|killByName|function launch/);
@@ -141,6 +141,32 @@ test('Gemini thinking stays off for plain chat but on for desktop control', asyn
   await agent.run({ ...requestBody, controlEnabled: true, execute: async () => ({ ok: true }) });
   assert.equal(captured[0].body.generationConfig.thinkingConfig.thinkingBudget, 0);
   assert.equal(captured[1].body.generationConfig.thinkingConfig.thinkingBudget, -1);
+});
+test('web_answer stays available without PC control, unlike the desktop tools', async () => {
+  const captured = [];
+  const agent = createAgent({ env: { GEMINI_API_KEY: 'fake' }, fetchImpl: providerMock([gemini([{ text: 'ok' }])], captured) });
+  await agent.run({ ...requestBody, controlEnabled: false, execute: async () => ({ ok: true }) });
+  const names = captured[0].body.tools[0].functionDeclarations.map(t => t.name);
+  assert.deepEqual(names, ['set_mode', 'web_answer']);
+});
+test('answerWithSearch grounds a query with google_search and returns the text answer, never mixing in tool declarations', async () => {
+  const captured = [];
+  const fetchImpl = async (url, opts) => {
+    captured.push({ url, body: JSON.parse(opts.body) });
+    return { ok: true, json: async () => ({ candidates: [{ content: { parts: [{ text: 'Antwort mit aktuellen Infos.' }] } }] }) };
+  };
+  const answer = await answerWithSearch({ env: { GEMINI_API_KEY: 'fake-key', GEMINI_MODEL: 'gemini-test' }, fetchImpl }, 'Was gibt es Neues?');
+  assert.equal(answer, 'Antwort mit aktuellen Infos.');
+  assert.match(captured[0].url, /gemini-test:generateContent$/);
+  assert.deepEqual(captured[0].body.tools, [{ google_search: {} }]);
+  assert.equal(captured[0].body.contents[0].parts[0].text, 'Was gibt es Neues?');
+});
+test('web_answer tool is reachable through the server execute dispatcher and never opens anything', async t => {
+  const answerFetch = async () => ({ ok: true, json: async () => ({ candidates: [{ content: { parts: [{ text: 'Kurze Antwort.' }] } }] }) });
+  const f = await fixture(t, async ({ execute, signal }) => ({ reply: await execute('web_answer', { query: 'News?', reason: 'Test' }, signal) }), { env: { GEMINI_API_KEY: 'fake' }, fetchImpl: answerFetch });
+  const res = await f.post('/api/chat', requestBody);
+  assert.equal(res.status, 200);
+  assert.deepEqual(f.bridge.calls, []);
 });
 test('R6 OpenAI: multiple calls and follow-up rounds preserve tool ids', async () => {
   const captured = [], calls = [];
@@ -469,9 +495,9 @@ test('stripAdditionalProperties removes only that key, recursively', () => {
   const cleaned = stripAdditionalProperties({ type: 'object', additionalProperties: false, properties: { a: { type: 'string', additionalProperties: false } } });
   assert.deepEqual(cleaned, { type: 'object', properties: { a: { type: 'string' } } });
 });
-test('buildSetupMessage includes only set_mode when PC control is disabled', () => {
+test('buildSetupMessage includes only set_mode and web_answer when PC control is disabled', () => {
   const disabled = buildSetupMessage({ env: { GEMINI_API_KEY: 'x' }, controlEnabled: false, resumeHandle: null });
-  assert.deepEqual(disabled.setup.tools[0].functionDeclarations.map(t => t.name), ['set_mode']);
+  assert.deepEqual(disabled.setup.tools[0].functionDeclarations.map(t => t.name), ['set_mode', 'web_answer']);
   const enabled = buildSetupMessage({ env: { GEMINI_API_KEY: 'x' }, controlEnabled: true, resumeHandle: null });
   assert.deepEqual(enabled.setup.tools[0].functionDeclarations.map(t => t.name), TOOL_DEFS.map(t => t.name));
   assert.doesNotMatch(JSON.stringify(enabled.setup.tools), /additionalProperties/);

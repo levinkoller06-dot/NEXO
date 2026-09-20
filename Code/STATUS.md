@@ -1,11 +1,11 @@
 # NEXO – aktueller Projektstand
 
-Stand: 20.09.2026 · Schritt 028
+Stand: 20.09.2026 · Schritt 029
 
 ## Aktueller Auftrag und Ergebnis
-Barge-in aus Schritt 027 funktionierte beim Nutzer gar nicht; er wollte daraufhin ausdrücklich die komplette Karen-Architektur (Google Gemini **Live API**: eine Dauerverbindung statt Text-Chat+separater Sprachausgabe) übernehmen, nicht nur Einzeltechniken. Das ist ein großer Umbau – dafür wurde zuerst ein Plan erstellt und vom Nutzer freigegeben (`EnterPlanMode`/`ExitPlanMode`), dann Phase A+B umgesetzt: **Server-seitige** Live-Verbindung (`Code/Server/live.js`) inkl. Werkzeugaufruf-Weiterleitung, live gegen die echte Gemini-API validiert (inkl. eines kritischen Fixes: der volle Systemprompt ließ das Live-Modell nach Werkzeugaufrufen sonst komplett verstummen). Zusätzlich zwei neue, von Karen inspirierte Werkzeuge: `focus_window` (Fenster gezielt per Titel nach vorne statt blindem ALT+TAB) und `click_by_name` (Bedienelemente wie "Lyrics" per sichtbarem Namen statt Bildschirmkoordinaten treffen).
+Nutzer meldete nach Schritt 028 (zurecht wütend): Phase A/B war reine Server-Vorarbeit ohne spürbaren Effekt, Programme öffnen sich weiterhin per sichtbarem Mausklick statt `launch_app`, es öffnen sich weiterhin ungefragte Zusatzprogramme (Outlook, Windows-Sicherheit), und "sag mir die News" öffnete einen Browser-Tab statt zu antworten. Sofort behoben: neues Werkzeug **`web_answer`** beantwortet Wissens-/Nachrichtenfragen per Googles eingebautem `google_search`-Grounding mit einer kurzen gesprochenen Antwort, öffnet dabei nichts (live getestet: liefert echte aktuelle Nachrichten). Systemprompt verschärft: `launch_app` ist jetzt für App-Öffnen PFLICHT (kein Taskleisten-/Symbol-Klick mehr erlaubt), "kein zusätzliches Programm ohne ausdrücklichen Auftrag" ist jetzt unmissverständlich formuliert, `web_answer` vs. `search_web` klar getrennt.
 
-**Wichtig:** Die Live-Verbindung existiert jetzt nur serverseitig und ist getestet, wird aber vom Browser/HUD noch nicht genutzt – das bisherige, textbasierte Gespräch über `/api/chat`+`/api/speech` läuft unverändert weiter. `focus_window`/`click_by_name`/`search_web` sind aber schon jetzt im bestehenden Werkzeugkatalog nutzbar, auch ohne die neue Architektur.
+**Ehrliche Einordnung:** Das eigentliche Geschwindigkeitsproblem (spürbar wie Karen) kommt erst mit der Browser-Anbindung der Live-API (Phase C, noch offen). Prompt-Verschärfungen gegen falsches Werkzeugverhalten (Maus statt launch_app, ungefragte Programme) verringern das Risiko, garantieren es aber nicht zu 100% – das bleibt eine Modell-Entscheidung pro Anfrage.
 
 ## Implementiert
 - Startbares Windows-HUD mit dem bestehenden Kopf aus 99.220 3D-Modell-Partikeln, Farbwechsel, Großansicht, Timer und Browsernotizen.
@@ -21,7 +21,8 @@ Barge-in aus Schritt 027 funktionierte beim Nutzer gar nicht; er wollte daraufhi
 - `click_by_name`: findet ein benanntes Bedienelement (Button/Link/Menüpunkt/Tab/Checkbox/Radio/Listeneintrag) per UI-Automation-Namenssuche in einem Fenster und aktiviert es direkt, ohne Bildschirmkoordinaten zu schätzen.
 - `Code/Server/live.js` (neu): baut die Gemini-Live-Setup-Nachricht (Systemprompt, Werkzeuge, Stimme), hält die WebSocket-Verbindung zu Gemini, leitet Werkzeugaufrufe an dieselben Desktop-Funktionen weiter wie der bisherige HTTP-Pfad, injiziert Bildschirmfotos als eigene Inhalts-Turns (nicht als Werkzeugantwort – die sieht das Modell sonst gar nicht). Noch nicht an den Browser angebunden.
 - `Code/Server/server.js`: neuer `/ws/voice`-WebSocket-Endpunkt (Paket `ws`, erste Abhängigkeit des Projekts), authentifiziert über das Sitzungscookie (ein WebSocket-Handshake kann keinen eigenen Token-Header senden).
-- `launch_app`: öffnet die Windows-Suche und tippt den Suchbegriff in einem Schritt (WIN, Text), OHNE automatisch ENTER zu drücken. Das Modell sieht danach das Ergebnis und bestätigt den obersten Treffer bewusst oder bricht mit ESC ab. Weiterhin keine feste App-Liste, keine App-spezifischen Makros, kein taskkill-Werkzeug.
+- `launch_app`: öffnet die Windows-Suche und tippt den Suchbegriff in einem Schritt (WIN, Text), OHNE automatisch ENTER zu drücken. Das Modell sieht danach das Ergebnis und bestätigt den obersten Treffer bewusst oder bricht mit ESC ab. Weiterhin keine feste App-Liste, keine App-spezifischen Makros, kein taskkill-Werkzeug. Systemprompt verlangt jetzt ausdrücklich launch_app statt Symbol-/Taskleisten-Klick für jedes Programmöffnen.
+- `web_answer` (neu, Schritt 029): beantwortet Wissens-/Nachrichtenfragen über Geminis eingebautes `google_search`-Grounding mit einer kurzen Textantwort zum Vorlesen – öffnet nichts, im Unterschied zu `search_web`. Läuft als eigener, direkter Gemini-Aufruf (kann nicht mit eigenen Werkzeugdefinitionen in derselben Anfrage kombiniert werden) und ist unabhängig von aktivierter PC-Steuerung immer verfügbar. Live gegen die echte API getestet.
 - Gemini-Denkbudget: 0 (aus) für reinen Chat, -1 (dynamisch) sobald PC-Steuerung aktiv ist – Chat bleibt schnell, PC-Aktionen werden überlegter gewählt.
 - Mikrofon bleibt während der Sprachausgabe aktiv (nur während der Denkphase stumm); erkennt die Spracherkennung währenddessen einen Satz, bricht die aktuelle Antwort sofort ab (Barge-in) statt sich hinten anzustellen.
 - Windows-Helfer über feste lokale PowerShell/C#-Dateien, JSON über stdin statt Shell-Interpolation. Startfehler, Zeitlimits und Abbruch werden behandelt.
@@ -45,6 +46,10 @@ Barge-in aus Schritt 027 funktionierte beim Nutzer gar nicht; er wollte daraufhi
 - Keine Kamera-Verfolgung, lautgenaue Lippensynchronisation, dauerhafte Erinnerung, Anmeldung über Geräte, Kalenderanbindung, Handy-App, Push oder Telefonie.
 - Notizen bleiben browserlokal; kein Schreiben nach Obsidian aus der App.
 
+## Nachweise aus Schritt 029
+- 54 Regressionstests erfolgreich (3 neu: `web_answer`-Verfügbarkeit ohne PC-Steuerung, `answerWithSearch`-Anfrageform, Server-Dispatcher-Weiterleitung).
+- `web_answer` live gegen die echte Gemini-API getestet: Frage "aktuellste Nachrichten von heute" lieferte eine echte, aktuelle, kurze Antwort ohne irgendein Fenster/Tab zu öffnen.
+
 ## Nachweise aus Schritt 028
 - 51 Regressionstests erfolgreich (10 neu: `live.js`-Setup/Werkzeugaufruf/Bildinjektion/Barge-in-Relay mit einem Fake-WebSocket, `focus_window`, `click_by_name`, `validateWindowTarget`).
 - Live-API-Protokoll live gegen die echte Gemini-API verifiziert, nicht nur dokumentiert: passendes Live-Modell gefunden (`gemini-2.5-flash-native-audio-preview-09-2025`), volle Setup-Nachricht inkl. aller 7 TOOL_DEFS akzeptiert, Werkzeugaufruf+Antwort-Zyklus funktioniert, Bildinjektion nach Werkzeugantwort funktioniert (Modell beschreibt einen echten Testschreenshot korrekt), Sitzungs-Wiederaufnahme-Feld akzeptiert.
@@ -62,9 +67,9 @@ Pfade ab Repository-Stamm:
 - Code/Server/launch.ps1: Start und Versionsprüfung.
 - Code/Server/package.json: erste Abhängigkeit (`ws`) – `npm install` im Server-Ordner nötig.
 - Code/Tests/regression.test.js: Tests ohne echte Desktop-Aktionen.
-- Planung/NEXO-Obsidian-Plan/Schritte/028 2026-09-20 Live-API Phase A und B.md: vollständige Übergabe.
+- Planung/NEXO-Obsidian-Plan/Schritte/029 2026-09-20 web_answer und Prompt-Verschaerfung.md: vollständige Übergabe.
 - Planung/NEXO-Obsidian-Plan/NEXO Planung und Ziel.md: langfristiges Ziel.
-- Plan-Datei: C:\Users\levin\.claude\plans\vectorized-purring-swing.md (vollständiger Phasenplan A–D).
+- Plan-Datei: C:\Users\levin\.claude\plans\vectorized-purring-swing.md (vollständiger Phasenplan A–D für den Live-API-Umbau).
 
 ## Als Nächstes
-Phase C: Browser-Seite (Mikrofon-Dauerstream über AudioWorklet, Wiedergabe, `/ws/voice` anbinden) – das ist der Teil, der sich für den Nutzer tatsächlich ändert und nur mit ihm zusammen am echten Gerät fertig getestet werden kann. Bis dahin: NEXO neu starten (Serverversion 30, `npm install` im Server-Ordner nicht vergessen) und `focus_window`/`click_by_name` im bestehenden Gespräch ausprobieren (z.B. "hol Spotify nach vorne" oder "klicke auf Lyrics in Spotify"). "Energie" schlägt ohne neues OpenAI-Guthaben weiterhin fehl.
+Phase C des Live-API-Umbaus (Browser-Mikrofon-Dauerstream, Wiedergabe) ist der eigentliche Geschwindigkeits-Hebel und steht noch aus – nur mit dem Nutzer am echten Gerät testbar. Bis dahin: NEXO neu starten (Serverversion 31), "sag mir die News" / ähnliche Wissensfragen testen (sollte jetzt antworten statt einen Tab zu öffnen), sowie beobachten, ob Programme jetzt zuverlässiger über launch_app statt Mausklick öffnen und ob weiterhin ungefragte Zusatzprogramme aufgehen. "Energie" schlägt ohne neues OpenAI-Guthaben weiterhin fehl.

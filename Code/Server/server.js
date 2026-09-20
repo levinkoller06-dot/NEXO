@@ -5,7 +5,7 @@ const path = require('path');
 const crypto = require('crypto');
 const { WebSocketServer } = require('ws');
 const { DesktopController, checkAbort } = require('./desktop');
-const { createAgent, MODE_PROVIDER, synthesizeSpeech } = require('./agent');
+const { createAgent, MODE_PROVIDER, synthesizeSpeech, answerWithSearch } = require('./agent');
 const { LiveSession } = require('./live');
 
 function loadEnv(file, env = process.env) {
@@ -127,7 +127,7 @@ function createNexoServer({ env = process.env, bridge, agent = createAgent({ env
       try { route = decodeURIComponent(req.url.split('?')[0]); } catch { throw failure(400, 'Ungültige URL-Codierung.'); }
       if (req.method === 'GET' && route === '/api/health') {
         return json(res, 200, { ok: true, modeProvider: MODE_PROVIDER, models: agent.models,
-          providers: { openai: !!env.OPENAI_API_KEY, gemini: !!env.GEMINI_API_KEY }, version: 30 });
+          providers: { openai: !!env.OPENAI_API_KEY, gemini: !!env.GEMINI_API_KEY }, version: 31 });
       }
       if (req.method === 'GET' && route === '/api/session') {
         if (sessions.size >= 16) throw failure(429, 'Zu viele offene Sitzungen. NEXO-Fenster schließen.');
@@ -199,6 +199,7 @@ function createNexoServer({ env = process.env, bridge, agent = createAgent({ env
             if (name === 'search_web') return desktop.searchWeb(current.id, args, signal);
             if (name === 'focus_window') return desktop.focusWindow(current.id, args, signal);
             if (name === 'click_by_name') return desktop.clickByName(current.id, args, signal);
+            if (name === 'web_answer') return answerWithSearch({ env, fetchImpl }, args.query, signal).then(answer => ({ ok: true, answer }));
             throw new Error('Unbekanntes Werkzeug.');
           },
           onTool: entry => {
@@ -260,6 +261,7 @@ function createNexoServer({ env = process.env, bridge, agent = createAgent({ env
         if (name === 'search_web') return desktop.searchWeb(id, args, controller.signal);
         if (name === 'focus_window') return desktop.focusWindow(id, args, controller.signal);
         if (name === 'click_by_name') return desktop.clickByName(id, args, controller.signal);
+        if (name === 'web_answer') return answerWithSearch({ env, fetchImpl }, args.query, controller.signal).then(answer => ({ ok: true, answer }));
         throw new Error('Unbekanntes Werkzeug.');
       },
       onAudio: buffer => { if (ws.readyState === ws.OPEN) ws.send(buffer, { binary: true }); },

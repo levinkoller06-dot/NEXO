@@ -1,6 +1,6 @@
 # Aktueller Stand – NEXO
 
-Stand: 20.09.2026 · Schritt 028 (Gemini-Live-API: Phase A und B)
+Stand: 20.09.2026 · Schritt 029 (web_answer und Prompt-Verschärfung)
 
 ## Funktioniert
 HUD mit 99.220 Punkten aus einem 3D-Kopfmodell, Mausverfolgung (immer aktiv, ohne Ausschalter), Blinzeln, Mundanimation während Sprachausgabe, Farb-/Partikelübergängen, Großansicht, Browsernotiz und Fokus-Timer. Lokaler Node-Server mit Cloud-Anbietern: Fokus/Bereit → Gemini (ohne Thinking im reinen Chat, dynamisches Denken bei PC-Steuerung), Energie → OpenAI. Das bisherige Gespräch (Browser-Spracherkennung, Barge-in, Gemini-Sprachausgabe über `/api/speech`) läuft unverändert über den alten HTTP-Pfad. Zusätzlich existiert jetzt eine server-seitige Gemini-**Live**-Verbindung (`Code/Server/live.js`, `/ws/voice`) für eine geplante Dauerverbindungs-Architektur wie im Referenzprojekt "Karen" – live gegen die echte API validiert, aber noch nicht an den Browser angebunden. NEXO aktiviert die allgemeine Desktopsteuerung automatisch für die aktive Sitzung und plant Bildschirm-, Maus- und Tastaturaktionen; Klicks laufen standardmäßig unsichtbar über UI Automation, sonst Fensternachricht, sonst echte Maus (`pointer=visible`); `launch_app` öffnet Programme, `search_web` öffnet eine Google-Suche direkt, `focus_window` holt ein Fenster gezielt per Titel nach vorne, `click_by_name` trifft benannte Bedienelemente ohne Koordinaten. Sensible Aktionen benötigen Bestätigung; Strg+Alt+F12 bleibt als unsichtbare Notabschaltung.
@@ -43,6 +43,7 @@ Cloud-KI bei lokal laufender Oberfläche und lokalem Server. OpenAI/Gemini sind 
 - [[026 2026-09-20 Denkbudget fuer PC-Steuerung und sicheres launch_app]]
 - [[027 2026-09-20 Karen-Techniken - UIA-Klicks, Websuche, Barge-in]]
 - [[028 2026-09-20 Live-API Phase A und B]]
+- [[029 2026-09-20 web_answer und Prompt-Verschaerfung]]
 
 Nach jedem abgeschlossenen Arbeits- oder Planungsschritt entsteht hier eine neue nummerierte Notiz im Ordner `Schritte`. Code und Notiz werden gemeinsam auf GitHub gesichert.
 
