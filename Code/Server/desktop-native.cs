@@ -213,22 +213,6 @@ public static class NexoDesktop {
         } else if(action=="wait")Thread.Sleep(500);
         else throw new ArgumentException("Unbekannte Desktop-Aktion.");
     }
-    // Deliberately does not press ENTER: Windows Search can fuzzy-match a query
-    // to something unrelated (or, for names like "Apple Music" that have no
-    // installed app, to whatever it currently prefers). The caller must look
-    // at the returned screenshot and confirm the top result itself.
-    public static void LaunchApp(string query) {
-        Dpi();CheckStop();
-        if(IsHud(Title(GetForegroundWindow())))throw new InvalidOperationException("NEXO darf keine eigenen Freigaben per Tastatur auslösen.");
-        Key(0x5B,false,0);Key(0x5B,true,0);
-        Thread.Sleep(500);CheckStop();
-        foreach(char c in query) {
-            CheckStop();
-            if(c=='\0'||c=='\n'||c=='\r')continue;
-            Key(0,false,c);Key(0,true,c);
-        }
-        Thread.Sleep(300);
-    }
     // Opens a Google search directly in the default browser via the OS's own
     // URL handling, instead of finding/clicking a search box on screen. Only
     // ever a fixed google.com/search URL with the query safely encoded, never

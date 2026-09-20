@@ -3,9 +3,9 @@ const { checkAbort } = require('./desktop');
 const MODE_PROVIDER = { standby: 'gemini', focus: 'gemini', energy: 'openai' };
 const SYSTEM_PROMPT = [
   'Du bist NEXO, ein persönlicher Assistent. Antworte kurz, klar und auf Deutsch.',
-  'Für PC-Aufgaben entscheidest DU anhand des aktuellen Bildschirms über jeden Maus- oder Tastaturschritt. Es gibt keine app-spezifischen Öffnungsroutinen.',
+  'Programme startest du direkt mit launch_app. Maus und Tastatur dienen der Bedienung innerhalb von Apps, etwa Suchen oder Scrollen.',
   'Führe NUR aus, was der Nutzer tatsächlich verlangt hat. Öffne, schließe oder ändere NIEMALS ein zusätzliches Programm oder Fenster, das nicht ausdrücklich verlangt wurde, auch nicht "vorsichtshalber", "zur Übersicht", als vermuteter Zwischenschritt oder weil ein Suchtreffer danach aussieht. Jedes zusätzlich geöffnete Programm ist ein Fehler. Bei Unklarheit lieber nachfragen als zusätzlich handeln.',
-  'Zum Öffnen eines Programms oder einer Datei nutze IMMER launch_app, niemals einen Klick auf ein Taskleisten-/Desktop-Symbol oder Startmenü-Kachel. launch_app: WIN drücken und Suchbegriff eintippen in einem Schritt, aber OHNE Enter. Sieh dir danach das Bild genau an und bestätige NUR den erkennbar richtigen obersten Treffer mit computer_action key=ENTER. Wirkt der Treffer falsch, fremd oder unsicher (z.B. Suche zeigt ein anderes Programm, Web-Vorschläge oder Einstellungen statt der App), breche mit ESC ab und sag dem Nutzer ehrlich, dass die App nicht gefunden wurde, statt irgendetwas zu öffnen. Rufe launch_app pro Programm nur einmal auf; nicht mit wechselnden Suchbegriffen raten.',
+  'Zum Öffnen installierter Programme nutze ausschließlich launch_app. Es startet direkt über Windows ohne Suche, Maus oder Tastatureingaben. Erfolg bestätigt nur den Startauftrag, nicht die Fensterbereitschaft. Bei Fehlern ehrlich melden, niemals durch Klicks, Windows-Suche oder Terminal umgehen. Für anschließende Bedienung zuerst computer_observe nutzen.',
   'Zwei verschiedene Websuche-Werkzeuge: web_answer beantwortet eine Wissens-/Info-/Nachrichtenfrage (z.B. "was gibt es Neues", "wie ist das Wetter", "wer ist...") mit einer kurzen gesprochenen Antwort und öffnet dabei NICHTS. search_web öffnet dagegen sichtbar eine Google-Ergebnisseite im Browser – nur wenn der Nutzer ausdrücklich etwas im Browser sehen/öffnen will. Im Zweifel web_answer nutzen, das ist die Standarderwartung bei Fragen.',
   'Ablauf: computer_observe, dann genau eine begründete computer_action anhand der zurückgegebenen frameId. Nach jeder Aktion erhältst du ein neues Bild. Prüfe den Erfolg sichtbar, bevor du ihn behauptest. Erreiche das Ziel in möglichst wenigen Schritten, ohne Zwischenstopps, die nicht nötig sind.',
   'button ist standardmäßig left. Nutze right NUR, wenn der Auftrag ausdrücklich ein Kontextmenü/Rechtsklick verlangt oder du bereits siehst, dass ohne Kontextmenü nicht weiterzukommen ist.',
@@ -36,7 +36,7 @@ const TOOL_DEFS = [
       pointer: { type: 'string', enum: ['background', 'visible'], description: 'background (Standard) bewegt den sichtbaren Mauszeiger nicht; visible bei fehlender Wirkung erneut versuchen.' }
     }, required: ['action', 'frameId', 'reason', 'risk'], additionalProperties: false
   } },
-  { name: 'launch_app', description: 'Öffnet die Windows-Suche und tippt den Suchbegriff in einem Schritt (WIN + Text), OHNE Enter zu drücken. Liefert danach ein neues Bildschirmbild; erst wenn der oberste Treffer erkennbar richtig ist, mit computer_action key=ENTER bestätigen, sonst mit ESC abbrechen.', parameters: {
+  { name: 'launch_app', description: 'Startet ein installiertes Programm direkt über Windows ohne Maus, Tastatur oder Windows-Suche. Liefert Startstatus, kein Bildschirmbild. Bei Fehlern nicht auf UI-Start ausweichen.', parameters: {
     type: 'object', properties: {
       query: { type: 'string', description: 'Suchbegriff, z.B. Programmname.' },
       reason: { type: 'string', description: 'Kurze konkrete Beschreibung von Ziel und Wirkung.' }
@@ -114,6 +114,19 @@ function createAgent({ env = process.env, fetchImpl = fetch, maxRounds = 24, max
   }
   async function run({ messages, mode, providerOverride, audio, signal, execute, onTool = () => {}, controlEnabled = false }) {
     const provider = providerOverride || MODE_PROVIDER[mode] || 'openai';
+    // Only complete, unambiguous launch requests bypass the model's UI planner.
+    // Compound requests and unknown names still use the normal tool conversation.
+    const direct = !audio && controlEnabled && messages.at(-1)?.role === 'user'
+      && messages.at(-1).content.trim().match(/^(?:nexo[, ]+)?(?:bitte\s+)?(?:öffne|öffnen|starte|starten)\s+(?:bitte\s+)?(spotify|chrome|google chrome|edge|microsoft edge|firefox|obsidian|notepad|editor|rechner|taschenrechner|discord|steam|word|excel|powerpoint|visual studio code)(?:\s+bitte)?[.!]?$/iu);
+    if (direct) {
+      checkAbort(signal);
+      const args = { query: direct[1], reason: 'Vom Nutzer ausdrücklich angefordertes Programm starten.' };
+      const result = await execute('launch_app', args, signal);
+      checkAbort(signal);
+      const entry = { name: 'launch_app', reason: args.reason, result };
+      onTool(entry);
+      return { reply: result.ok ? 'Startauftrag für ' + direct[1] + ' wurde an Windows übergeben.' : (result.message || 'Das Programm konnte nicht gestartet werden.'), provider, model: models[provider], toolLog: [entry] };
+    }
     const defs = TOOL_DEFS.filter(t => controlEnabled || t.name === 'set_mode' || t.name === 'web_answer');
     const upperTypes = value => {
       if (Array.isArray(value)) return value.map(upperTypes);
@@ -206,7 +219,7 @@ async function synthesizeSpeech({ env = process.env, fetchImpl = fetch } = {}, t
   const key = env.GEMINI_API_KEY;
   if (!key) throw new Error('Gemini-Key fehlt in Server/.env.');
   const model = env.GEMINI_TTS_MODEL || 'gemini-2.5-flash-preview-tts';
-  const voiceName = env.GEMINI_TTS_VOICE || 'Kore';
+  const voiceName = env.GEMINI_TTS_VOICE || 'Charon';
   const timeout = AbortSignal.timeout(30000);
   const apiRes = await fetchImpl('https://generativelanguage.googleapis.com/v1beta/models/' + encodeURIComponent(model) + ':generateContent', {
     method: 'POST', signal: signal ? AbortSignal.any([signal, timeout]) : timeout,

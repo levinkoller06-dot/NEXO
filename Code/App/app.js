@@ -26,7 +26,7 @@ function draw(now){requestAnimationFrame(draw);const dt=Math.min(40,now-lastTime
  ctx.strokeStyle=`rgba(${rgb},.11)`;ctx.lineWidth=1;
  for(let j=0;j<3;j++){ctx.beginPath();ctx.ellipse(cx,cy+scale*1.57,scale*(.77+j*.13),scale*(.105+j*.025),0,0,Math.PI*2);ctx.stroke();}
  ctx.setLineDash([2,9]);ctx.beginPath();ctx.ellipse(cx,cy,scale*1.22,scale*1.64,0,0,Math.PI*2);ctx.stroke();ctx.setLineDash([]);
- const ry=yaw+Math.sin(t*.43)*.045,rx=pitch,sy=Math.sin(ry),co=Math.cos(ry),sx=Math.sin(rx),cr=Math.cos(rx),blink=Math.pow(Math.max(0,Math.cos(t*1.12+2)),100);const mouth=speaking?Math.abs(Math.sin(t*9)*Math.sin(t*3))*.095:0;
+ const ry=yaw+Math.sin(t*.43)*.045,rx=pitch,sy=Math.sin(ry),co=Math.cos(ry),sx=Math.sin(rx),cr=Math.cos(rx),blink=Math.pow(Math.max(0,Math.cos(t*1.12+2)),100);const mouth=Math.min(1,Math.max(0,window.nexoSpeechLevel?.()||0))*.095;
  const batches=Array.from({length:8},()=>[]);
  for(const p of points){let bx=p.x,by=p.y,bz=p.z;if(explode){bx+=p.ex*explode*EXPLODE_SCALE;by+=p.ey*explode*EXPLODE_SCALE;bz+=p.ez*explode*EXPLODE_SCALE;}
   let py=by;if(p.eye)py=-.024+(py+.024)*(1-blink*.88);if(p.lip)py+=(p.y>.75?1:-1)*mouth*p.lip;const px=bx*co+bz*sy,pz=-bx*sy+bz*co,yy=py*cr-pz*sx,zz=Math.min(3.2,py*sx+pz*cr);

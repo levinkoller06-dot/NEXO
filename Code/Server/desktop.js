@@ -114,11 +114,7 @@ class NativeBridge {
     }
   }
   async launchApp(query, signal) {
-    try { return await this.run({ operation: 'launchApp', query }, signal); }
-    catch (err) {
-      await this.run({ operation: 'release' }).catch(() => {});
-      throw err;
-    }
+    return this.run({ operation: 'launchApp', query }, signal);
   }
   searchWeb(query, signal) { return this.run({ operation: 'searchWeb', query }, signal); }
   focusWindow(title, signal) { return this.run({ operation: 'focusWindow', title }, signal); }
@@ -248,9 +244,9 @@ class DesktopController {
     this.assertEnabled(owner, signal);
     const { query } = validateLaunch(raw);
     this.frame = null;
-    await this.bridge.launchApp(query, signal);
+    const result = await this.bridge.launchApp(query, signal);
     this.assertEnabled(owner, signal);
-    return this.observe(owner, signal);
+    return result;
   }
   async searchWeb(owner, raw, signal) {
     this.assertEnabled(owner, signal);

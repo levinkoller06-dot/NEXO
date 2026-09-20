@@ -1,16 +1,18 @@
 # NEXO – aktueller Projektstand
 
-Stand: 20.09.2026 · Schritt 029
+Stand: 20.09.2026 · Schritt 030
 
 ## Aktueller Auftrag und Ergebnis
-Nutzer meldete nach Schritt 028 (zurecht wütend): Phase A/B war reine Server-Vorarbeit ohne spürbaren Effekt, Programme öffnen sich weiterhin per sichtbarem Mausklick statt `launch_app`, es öffnen sich weiterhin ungefragte Zusatzprogramme (Outlook, Windows-Sicherheit), und "sag mir die News" öffnete einen Browser-Tab statt zu antworten. Sofort behoben: neues Werkzeug **`web_answer`** beantwortet Wissens-/Nachrichtenfragen per Googles eingebautem `google_search`-Grounding mit einer kurzen gesprochenen Antwort, öffnet dabei nichts (live getestet: liefert echte aktuelle Nachrichten). Systemprompt verschärft: `launch_app` ist jetzt für App-Öffnen PFLICHT (kein Taskleisten-/Symbol-Klick mehr erlaubt), "kein zusätzliches Programm ohne ausdrücklichen Auftrag" ist jetzt unmissverständlich formuliert, `web_answer` vs. `search_web` klar getrennt.
+Schritt 030 vergleicht Karens direkten App-Start mit NEXO und ersetzt den Windows-Suchweg durch installierte EXE-Dateien, exakte Startmenü-Verknüpfungen oder App-IDs. Reine bekannte Startaufträge wie „Öffne Spotify“ laufen ohne Modellaufruf, Screenshot, Maus oder Tastatur. Für kombinierte Aufträge bleibt die KI-Werkzeugschleife zuständig; der Prompt verlangt den direkten Startweg. Das ist keine technische Garantie gegen jeden möglichen Fehlplan eines Modells bei komplexen Aufträgen.
 
-**Ehrliche Einordnung:** Das eigentliche Geschwindigkeitsproblem (spürbar wie Karen) kommt erst mit der Browser-Anbindung der Live-API (Phase C, noch offen). Prompt-Verschärfungen gegen falsches Werkzeugverhalten (Maus statt launch_app, ungefragte Programme) verringern das Risiko, garantieren es aber nicht zu 100% – das bleibt eine Modell-Entscheidung pro Anfrage.
+Sprachausgabe bleibt ausschließlich Gemini mit der konfigurierten Stimme (lokal Charon); Browserstimmen-Fallback entfernt. Ein Audiopaket pro Antwort vermeidet zusätzliche Satz-Anfragen. Bei Ausfall erscheint ein Fehler statt einer anderen Stimme. Die Mundöffnung folgt der Audioenergie aus demselben Web-Audio-Signal wie die Lautsprecherausgabe und schließt bei Ende/Abbruch. Das ist Lautstärke-Synchronisierung, keine Phonem-/Lippenform-Erkennung.
+
+Geprüft: 61 automatisierte Tests, native Kompilierung, Spotify-Pfadauflösung auf diesem PC ohne Start. Echte Spracherkennung, hörbare Wiedergabe und sichtbare Lippensynchronität sind noch nicht im Benutzer-HUD abgenommen. Server/Starter Version 32; nach Neustart wirksam.
 
 ## Implementiert
 - Startbares Windows-HUD mit dem bestehenden Kopf aus 99.220 3D-Modell-Partikeln, Farbwechsel, Großansicht, Timer und Browsernotizen.
 - Cloud-Modelle mit lokaler Oberfläche und lokalem Node-Server: Fokus/Bereit → Gemini; Energie → OpenAI. Modelle/Keys stehen in Server/.env. Kein in der Cloud gehosteter NEXO-Core.
-- Sprachaufträge, begrenzter Gesprächsverlauf im Kern, Sprachausgabe über Gemini-TTS (`/api/speech`, Stimme konfigurierbar über `GEMINI_TTS_VOICE`) mit Browser-TTS als Fallback, satzweises Streaming für schnelleren Sprechbeginn, und Mundanimation beim Sprechen.
+- Sprachaufträge, begrenzter Gesprächsverlauf im Kern, Sprachausgabe über Gemini-TTS (`/api/speech`, Stimme konfigurierbar über `GEMINI_TTS_VOICE`) ohne Ersatzstimme, mit einem Audiopaket pro Antwort und signalgesteuerter Mundanimation.
 - Das sichtbare Gesprächsfenster und das Texteingabefeld sind entfernt; der Auftrag läuft über das Mikrofon.
 - Separate Zustände für Gesprächswunsch, tatsächliches Mikrofon, laufenden Auftrag und Wiedergabe. Das Mikrofon pausiert vor der Netzwerkanfrage. Client-Warteschlange und serverweite Auftragssperre verhindern parallele PC-Aktionen.
 - KI-Werkzeugschleife für beide Anbieter mit mehreren Runden und vollständigen Werkzeugergebnissen. Gemini-Signaturen und IDs bleiben erhalten.
@@ -21,7 +23,7 @@ Nutzer meldete nach Schritt 028 (zurecht wütend): Phase A/B war reine Server-Vo
 - `click_by_name`: findet ein benanntes Bedienelement (Button/Link/Menüpunkt/Tab/Checkbox/Radio/Listeneintrag) per UI-Automation-Namenssuche in einem Fenster und aktiviert es direkt, ohne Bildschirmkoordinaten zu schätzen.
 - `Code/Server/live.js` (neu): baut die Gemini-Live-Setup-Nachricht (Systemprompt, Werkzeuge, Stimme), hält die WebSocket-Verbindung zu Gemini, leitet Werkzeugaufrufe an dieselben Desktop-Funktionen weiter wie der bisherige HTTP-Pfad, injiziert Bildschirmfotos als eigene Inhalts-Turns (nicht als Werkzeugantwort – die sieht das Modell sonst gar nicht). Noch nicht an den Browser angebunden.
 - `Code/Server/server.js`: neuer `/ws/voice`-WebSocket-Endpunkt (Paket `ws`, erste Abhängigkeit des Projekts), authentifiziert über das Sitzungscookie (ein WebSocket-Handshake kann keinen eigenen Token-Header senden).
-- `launch_app`: öffnet die Windows-Suche und tippt den Suchbegriff in einem Schritt (WIN, Text), OHNE automatisch ENTER zu drücken. Das Modell sieht danach das Ergebnis und bestätigt den obersten Treffer bewusst oder bricht mit ESC ab. Weiterhin keine feste App-Liste, keine App-spezifischen Makros, kein taskkill-Werkzeug. Systemprompt verlangt jetzt ausdrücklich launch_app statt Symbol-/Taskleisten-Klick für jedes Programmöffnen.
+- `launch_app`: direkter Windows-Start über apps.ps1. Kein Suchmenü, kein Enter, keine Mausklicks; Erfolg bedeutet nur übergebener Startauftrag. Unbekannte/mehrdeutige Apps liefern Fehler.
 - `web_answer` (neu, Schritt 029): beantwortet Wissens-/Nachrichtenfragen über Geminis eingebautes `google_search`-Grounding mit einer kurzen Textantwort zum Vorlesen – öffnet nichts, im Unterschied zu `search_web`. Läuft als eigener, direkter Gemini-Aufruf (kann nicht mit eigenen Werkzeugdefinitionen in derselben Anfrage kombiniert werden) und ist unabhängig von aktivierter PC-Steuerung immer verfügbar. Live gegen die echte API getestet.
 - Gemini-Denkbudget: 0 (aus) für reinen Chat, -1 (dynamisch) sobald PC-Steuerung aktiv ist – Chat bleibt schnell, PC-Aktionen werden überlegter gewählt.
 - Mikrofon bleibt während der Sprachausgabe aktiv (nur während der Denkphase stumm); erkennt die Spracherkennung währenddessen einen Satz, bricht die aktuelle Antwort sofort ab (Barge-in) statt sich hinten anzustellen.

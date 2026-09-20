@@ -1,6 +1,8 @@
 # NEXO Planung und Ziel
 
-Stand: 20.09.2026 · Schritt 029 (web_answer und Prompt-Verschärfung)
+Stand: 20.09.2026 · Schritt 030
+
+Aktuelle Umsetzung: [[030 2026-09-20 Direkter Appstart und Gemini Audio]]. Apps direkt über Windows starten; Maus/Tastatur für die Bedienung innerhalb von Apps. Ausschließlich konfigurierte Gemini-Stimme; Mundbewegung folgt dem abgespielten Audio. Weitere Zielphasen bleiben offen, siehe aktueller Status.
 Zielbild: Cloud-basierte persönliche Assistenz für PC, Handy und Telefon
 
 Die Nummern 000–015 unten sind Planungsphasen; die fortlaufenden Arbeitsnotizen unter `Schritte/` haben eine eigene Nummerierung. Zum aktuellen Code und seinen Grenzen siehe [[1 Aktueller Stand]], [[019 2026-09-20 Analyse der Aenderungen]], [[020 2026-09-20 KI-Desktopsteuerung und Fehlerbehebung]], [[021 2026-09-20 HUD vereinfacht und Mikrofon repariert]], [[022 2026-09-20 Mikrofonzugriff und HUD-Texte bereinigt]], [[023 2026-09-20 Audio-Fallback für Edge-App ergänzt]], [[024 2026-09-20 Mikrofon-Fix, Gemini-Stimme und Tempo]], [[025 2026-09-20 Bewegungs-Fix, Stimmklaerung und unsichtbare Maus]], [[026 2026-09-20 Denkbudget fuer PC-Steuerung und sicheres launch_app]], [[027 2026-09-20 Karen-Techniken - UIA-Klicks, Websuche, Barge-in]], [[028 2026-09-20 Live-API Phase A und B]] und [[029 2026-09-20 web_answer und Prompt-Verschaerfung]].

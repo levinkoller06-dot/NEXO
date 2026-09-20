@@ -20,69 +20,26 @@ function addTurn(role, text) {
 // it's muted; once NEXO starts speaking it listens again so the user can
 // just talk over it instead of waiting it out. See updateMicBusy().
 function updateMicBusy() { mic?.setBusy(busy && !speaking); }
-function sayWithBrowserVoice(text, signal) {
-  if (!window.speechSynthesis || signal.aborted) return Promise.resolve();
-  cancelSpeech();
-  return new Promise(resolve => {
-    const utter = new SpeechSynthesisUtterance(text); utter.lang = 'de-DE';
-    let finished = false;
-    const done = () => {
-      if (finished) return; finished = true;
-      clearTimeout(timer); signal.removeEventListener('abort', cancel);
-      speaking = false; updateMicBusy(); cancelSpeech = () => {}; resolve();
-    };
-    const cancel = () => { speechSynthesis.cancel(); done(); };
-    const timer = setTimeout(cancel, 90000);
-    cancelSpeech = cancel; signal.addEventListener('abort', cancel, { once: true });
-    utter.onend = utter.onerror = done; utter.onstart = () => { if (!finished) { speaking = true; updateMicBusy(); } };
-    $('state').textContent = 'NEXO spricht.';
-    speechSynthesis.speak(utter);
-  });
-}
-// Split into sentence-sized chunks so the first chunk's (much shorter, much
-// faster) audio can start playing while later chunks are still being
-// synthesized, instead of waiting for the whole reply's audio at once.
-function splitIntoSpeechChunks(text) {
-  return (text.match(/[^.!?\n]+[.!?\n]*/g) || [text]).map(s => s.trim()).filter(Boolean);
-}
-async function fetchSpeechBlob(text, signal) {
-  try { return await NexoApi.postBlob('/api/speech', { text }, { signal }); }
-  catch (error) {
-    if (signal.aborted) return null;
-    showError(new Error('Gemini-Sprachausgabe nicht erreichbar (' + (error.message || error) + '), nutze Browser-Stimme.'));
-    return null;
-  }
-}
-function playSpeechBlob(blob, signal) {
-  return new Promise(resolve => {
-    const audio = new Audio(URL.createObjectURL(blob));
-    let finished = false;
-    const done = () => {
-      if (finished) return; finished = true;
-      signal.removeEventListener('abort', cancel);
-      URL.revokeObjectURL(audio.src); resolve();
-    };
-    const cancel = () => { audio.pause(); done(); };
-    cancelSpeech = cancel; signal.addEventListener('abort', cancel, { once: true });
-    audio.onended = audio.onerror = done; audio.onplay = () => { if (!finished) { speaking = true; updateMicBusy(); } };
-    audio.play().catch(done);
-  });
-}
+const speechPlayer = new NexoSpeechPlayer({
+  onSpeaking(value) { speaking = value; updateMicBusy(); }
+});
+window.nexoSpeechLevel = () => speechPlayer.level();
+document.addEventListener('pointerdown', () => { void speechPlayer.unlock().catch(showError); });
 async function say(text, signal) {
-  if (signal.aborted) return;
+  if (signal.aborted || !text.trim()) return;
   cancelSpeech();
-  const chunks = splitIntoSpeechChunks(text);
-  if (!chunks.length) return;
-  $('state').textContent = 'NEXO spricht.';
-  let pending = fetchSpeechBlob(chunks[0], signal);
-  for (let i = 0; i < chunks.length && !signal.aborted; i++) {
-    const blob = await pending;
-    if (signal.aborted) break;
-    pending = i + 1 < chunks.length ? fetchSpeechBlob(chunks[i + 1], signal) : null;
-    if (!blob) { await sayWithBrowserVoice(chunks.slice(i).join(' '), signal); break; }
-    await playSpeechBlob(blob, signal);
+  const controller = new AbortController();
+  const combined = AbortSignal.any([signal, controller.signal]);
+  cancelSpeech = () => { controller.abort(); speechPlayer.stop(); };
+  try {
+    $('state').textContent = 'Sprachausgabe wird geladen …';
+    const blob = await NexoApi.postBlob('/api/speech', { text }, { signal: combined });
+    if (combined.aborted) return;
+    $('state').textContent = 'NEXO spricht.';
+    await speechPlayer.play(blob, combined);
+  } catch (error) {
+    if (!combined.aborted) throw new Error('Gemini-Stimme nicht verfügbar: ' + (error.message || error));
   }
-  speaking = false; updateMicBusy(); cancelSpeech = () => {};
 }
 const queue = new NexoConversationState.SerialQueue({
   onBusy(value) {
@@ -232,7 +189,7 @@ async function poll() {
       $('approval-action').textContent = a.action + (a.key ? ': ' + a.key : a.text ? ': ' + a.text : a.x !== undefined ? ' bei ' + a.x + ', ' + a.y : '');
       $('approval-image').src = 'data:image/jpeg;base64,' + data.approval.image;
       if (!$('approval').open) $('approval').showModal();
-      if (queue.controller) void say('Bitte bestätige den nächsten Schritt im NEXO-Fenster.', queue.controller.signal);
+      if (queue.controller) void say('Bitte bestätige den nächsten Schritt im NEXO-Fenster.', queue.controller.signal).catch(showError);
     } else if (!data.approval && approvalId) {
       approvalId = null; $('approval').close(); $('approval-image').removeAttribute('src');
     }

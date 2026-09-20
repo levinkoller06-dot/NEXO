@@ -279,12 +279,12 @@ test('validateLaunch rejects empty/oversized queries and missing reason', () => 
   assert.throws(() => validateLaunch({ query: 'Notepad', reason: '' }));
   assert.deepEqual(validateLaunch({ query: 'Notepad', reason: 'Editor öffnen' }), { query: 'Notepad', reason: 'Editor öffnen' });
 });
-test('launch_app opens via the bridge in one step and returns a fresh observation', async () => {
+test('launch_app starts directly without a screenshot or input', async () => {
   const bridge = fakeBridge(), desktop = new DesktopController({ bridge });
   await desktop.enable('owner');
   const result = await desktop.launchApp('owner', { query: 'Rechner', reason: 'Rechner öffnen' });
-  assert.deepEqual(bridge.calls[0], { launchApp: 'Rechner' });
-  assert.ok(result.frameId);
+  assert.deepEqual(bridge.calls, [{ launchApp: 'Rechner' }]);
+  assert.equal(result.ok, true);
   desktop.disable();
 });
 test('launch_app tool is reachable through the server execute dispatcher', async t => {

@@ -21,8 +21,8 @@ try {
             [NexoDesktop]::Act($a.action,$a.x,$a.y,$a.x2,$a.y2,$a.text,$a.key,$a.steps,$a.button,$a.pointer,$b.left,$b.top,$b.screenWidth,$b.screenHeight)
             @{ok=$true} | ConvertTo-Json -Compress
         } elseif ($request.operation -eq 'launchApp') {
-            [NexoDesktop]::LaunchApp($request.query)
-            @{ok=$true} | ConvertTo-Json -Compress
+            . (Join-Path $PSScriptRoot 'apps.ps1')
+            Start-NexoApp $request.query | ConvertTo-Json -Compress
         } elseif ($request.operation -eq 'searchWeb') {
             [NexoDesktop]::SearchWeb($request.query)
             @{ok=$true} | ConvertTo-Json -Compress

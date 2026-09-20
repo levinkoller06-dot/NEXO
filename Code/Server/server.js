@@ -127,7 +127,7 @@ function createNexoServer({ env = process.env, bridge, agent = createAgent({ env
       try { route = decodeURIComponent(req.url.split('?')[0]); } catch { throw failure(400, 'Ungültige URL-Codierung.'); }
       if (req.method === 'GET' && route === '/api/health') {
         return json(res, 200, { ok: true, modeProvider: MODE_PROVIDER, models: agent.models,
-          providers: { openai: !!env.OPENAI_API_KEY, gemini: !!env.GEMINI_API_KEY }, version: 31 });
+          providers: { openai: !!env.OPENAI_API_KEY, gemini: !!env.GEMINI_API_KEY }, version: 32 });
       }
       if (req.method === 'GET' && route === '/api/session') {
         if (sessions.size >= 16) throw failure(429, 'Zu viele offene Sitzungen. NEXO-Fenster schließen.');
@@ -163,8 +163,12 @@ function createNexoServer({ env = process.env, bridge, agent = createAgent({ env
         if (!env.GEMINI_API_KEY) throw failure(503, 'Für Sprachausgabe ist ein Gemini-Key in Server/.env nötig.');
         if (typeof body.text !== 'string' || !body.text.trim() || body.text.length > 4000) throw failure(400, 'Ungültiger Text für Sprachausgabe.');
         let audio;
-        try { audio = await synthesizeSpeech({ env, fetchImpl }, body.text.trim()); }
+        const speechAbort = new AbortController();
+        const disconnect = () => speechAbort.abort();
+        res.once('close', disconnect);
+        try { audio = await synthesizeSpeech({ env, fetchImpl }, body.text.trim(), speechAbort.signal); }
         catch (err) { throw failure(502, err.message); }
+        finally { res.removeListener('close', disconnect); }
         if (res.destroyed || res.writableEnded) return;
         res.writeHead(200, { 'Content-Type': 'audio/wav', 'Cache-Control': 'no-store' });
         return res.end(audio);
