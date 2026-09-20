@@ -3,8 +3,10 @@ const http = require('http');
 const fs = require('fs');
 const path = require('path');
 const crypto = require('crypto');
+const { WebSocketServer } = require('ws');
 const { DesktopController, checkAbort } = require('./desktop');
 const { createAgent, MODE_PROVIDER, synthesizeSpeech } = require('./agent');
+const { LiveSession } = require('./live');
 
 function loadEnv(file, env = process.env) {
   if (!fs.existsSync(file)) return;
@@ -125,7 +127,7 @@ function createNexoServer({ env = process.env, bridge, agent = createAgent({ env
       try { route = decodeURIComponent(req.url.split('?')[0]); } catch { throw failure(400, 'Ungültige URL-Codierung.'); }
       if (req.method === 'GET' && route === '/api/health') {
         return json(res, 200, { ok: true, modeProvider: MODE_PROVIDER, models: agent.models,
-          providers: { openai: !!env.OPENAI_API_KEY, gemini: !!env.GEMINI_API_KEY }, version: 29 });
+          providers: { openai: !!env.OPENAI_API_KEY, gemini: !!env.GEMINI_API_KEY }, version: 30 });
       }
       if (req.method === 'GET' && route === '/api/session') {
         if (sessions.size >= 16) throw failure(429, 'Zu viele offene Sitzungen. NEXO-Fenster schließen.');
@@ -195,6 +197,8 @@ function createNexoServer({ env = process.env, bridge, agent = createAgent({ env
             if (name === 'computer_action') return desktop.action(current.id, args, signal);
             if (name === 'launch_app') return desktop.launchApp(current.id, args, signal);
             if (name === 'search_web') return desktop.searchWeb(current.id, args, signal);
+            if (name === 'focus_window') return desktop.focusWindow(current.id, args, signal);
+            if (name === 'click_by_name') return desktop.clickByName(current.id, args, signal);
             throw new Error('Unbekanntes Werkzeug.');
           },
           onTool: entry => {
@@ -215,6 +219,65 @@ function createNexoServer({ env = process.env, bridge, agent = createAgent({ env
   server.requestTimeout = 300000;
   server.headersTimeout = 10000;
   server.on('close', () => { clearInterval(timer); stopAll('Server beendet.'); });
+
+  // Live voice relay: one persistent Gemini Live connection per browser tab,
+  // proxied through here so the API key never reaches the browser. A
+  // WebSocket handshake can't carry the X-Nexo-Token header the way a POST
+  // does, so the session cookie plus the existing Origin/Host checks below
+  // are what authenticate it instead.
+  const wss = new WebSocketServer({ noServer: true });
+  server.on('upgrade', (req, socket, head) => {
+    try {
+      checkRequest(req);
+      const route = decodeURIComponent(req.url.split('?')[0]);
+      if (route !== '/ws/voice') throw failure(404, 'Unbekannter Pfad.');
+      const id = /(?:^|;\s*)nexoSession=([a-f0-9]{64})(?:;|$)/.exec(req.headers.cookie || '')?.[1];
+      const current = sessions.get(id);
+      if (!current) throw failure(401, 'Sitzung abgelaufen.');
+      wss.handleUpgrade(req, socket, head, ws => wss.emit('connection', ws, id, current));
+    } catch (err) {
+      try { socket.write('HTTP/1.1 ' + (err.status || 400) + ' ' + String(err.message || 'Bad Request').replace(/[\r\n]/g, '') + '\r\n\r\n'); } catch {}
+      socket.destroy();
+    }
+  });
+  wss.on('connection', (ws, id, current) => {
+    current.seen = Date.now(); desktop.touch(id);
+    const controller = new AbortController();
+    const send = value => { if (ws.readyState === ws.OPEN) ws.send(JSON.stringify(value)); };
+    const live = new LiveSession({
+      env,
+      controlEnabled: desktop.status(id).enabled,
+      execute: async (name, args) => {
+        checkAbort(controller.signal);
+        if (name === 'set_mode') {
+          if (!Object.hasOwn(MODE_PROVIDER, args.mode)) throw new Error('Unbekannter Modus.');
+          current.mode = { name: args.mode, id: crypto.randomUUID() };
+          return { ok: true, mode: args.mode, message: 'Modus für die nächste Anfrage umgestellt.' };
+        }
+        if (name === 'computer_observe') return desktop.observe(id, controller.signal);
+        if (name === 'computer_action') return desktop.action(id, args, controller.signal);
+        if (name === 'launch_app') return desktop.launchApp(id, args, controller.signal);
+        if (name === 'search_web') return desktop.searchWeb(id, args, controller.signal);
+        if (name === 'focus_window') return desktop.focusWindow(id, args, controller.signal);
+        if (name === 'click_by_name') return desktop.clickByName(id, args, controller.signal);
+        throw new Error('Unbekanntes Werkzeug.');
+      },
+      onAudio: buffer => { if (ws.readyState === ws.OPEN) ws.send(buffer, { binary: true }); },
+      onTranscript: entry => send({ type: 'transcript', ...entry }),
+      onInterrupted: () => send({ type: 'interrupted' }),
+      onToolLog: entry => {
+        current.log.push({ ...entry, time: Date.now(), id: crypto.randomUUID() });
+        if (current.log.length > 60) current.log.shift();
+        if (entry.name === 'set_mode' && entry.result.ok) send({ type: 'mode', mode: entry.result.mode });
+      },
+      onError: err => send({ type: 'error', message: String(err.message || err).slice(0, 190) }),
+      onStatus: status => send({ type: 'status', status })
+    });
+    ws.on('message', (data, isBinary) => { if (isBinary) live.sendAudio(data); });
+    ws.on('close', () => { controller.abort(); live.close(); });
+    ws.on('error', () => {});
+  });
+
   return { server, desktop, stopAll };
 }
 if (require.main === module) {

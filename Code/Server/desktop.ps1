@@ -26,6 +26,12 @@ try {
         } elseif ($request.operation -eq 'searchWeb') {
             [NexoDesktop]::SearchWeb($request.query)
             @{ok=$true} | ConvertTo-Json -Compress
+        } elseif ($request.operation -eq 'focusWindow') {
+            [NexoDesktop]::FocusWindow($request.title)
+            @{ok=$true} | ConvertTo-Json -Compress
+        } elseif ($request.operation -eq 'clickByName') {
+            [NexoDesktop]::ClickByName($request.title, $request.control)
+            @{ok=$true} | ConvertTo-Json -Compress
         } elseif ($request.operation -eq 'release') {
             [NexoDesktop]::Release()
             @{ok=$true} | ConvertTo-Json -Compress

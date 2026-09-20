@@ -1,0 +1,10 @@
+{
+  "name": "nexo-server",
+  "private": true,
+  "version": "1.0.0",
+  "description": "NEXO local core server.",
+  "main": "server.js",
+  "dependencies": {
+    "ws": "^8.18.0"
+  }
+}

@@ -47,6 +47,18 @@ function validateLaunch(args) {
   if (typeof args.reason !== 'string' || !args.reason.trim() || args.reason.length > 500) throw new Error('Beschreibung der Aktion fehlt.');
   return { query: args.query, reason: args.reason };
 }
+function validateWindowTarget(args, extra = []) {
+  if (typeof args?.title !== 'string' || !args.title.trim() || args.title.length > 200 || /[\r\n\0]/.test(args.title))
+    throw new Error('Fenstertitel: 1–200 Zeichen, einzeilig.');
+  const result = { title: args.title };
+  for (const key of extra) {
+    if (typeof args[key] !== 'string' || !args[key].trim() || args[key].length > 200 || /[\r\n\0]/.test(args[key]))
+      throw new Error('Bedienelement-Name: 1–200 Zeichen, einzeilig.');
+    result[key] = args[key];
+  }
+  if (typeof args.reason !== 'string' || !args.reason.trim() || args.reason.length > 500) throw new Error('Beschreibung der Aktion fehlt.');
+  return result;
+}
 
 // Only fixed helper files are executable. Model text travels through stdin JSON,
 // never through a shell, command line interpolation, or executable filename.
@@ -109,6 +121,8 @@ class NativeBridge {
     }
   }
   searchWeb(query, signal) { return this.run({ operation: 'searchWeb', query }, signal); }
+  focusWindow(title, signal) { return this.run({ operation: 'focusWindow', title }, signal); }
+  clickByName(title, control, signal) { return this.run({ operation: 'clickByName', title, control }, signal); }
   watchStop(onStop) {
     return new Promise((resolve, reject) => {
       let child, ready = false, closed = false, buffer = '';
@@ -246,5 +260,21 @@ class DesktopController {
     this.assertEnabled(owner, signal);
     return this.observe(owner, signal);
   }
+  async focusWindow(owner, raw, signal) {
+    this.assertEnabled(owner, signal);
+    const { title } = validateWindowTarget(raw);
+    this.frame = null;
+    await this.bridge.focusWindow(title, signal);
+    this.assertEnabled(owner, signal);
+    return this.observe(owner, signal);
+  }
+  async clickByName(owner, raw, signal) {
+    this.assertEnabled(owner, signal);
+    const { title, control } = validateWindowTarget(raw, ['control']);
+    this.frame = null;
+    await this.bridge.clickByName(title, control, signal);
+    this.assertEnabled(owner, signal);
+    return this.observe(owner, signal);
+  }
 }
-module.exports = { NativeBridge, DesktopController, validateAction, validateLaunch, checkAbort, abortError };
+module.exports = { NativeBridge, DesktopController, validateAction, validateLaunch, validateWindowTarget, checkAbort, abortError };

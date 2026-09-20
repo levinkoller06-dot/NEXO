@@ -4,8 +4,10 @@ const assert = require('node:assert/strict');
 const http = require('node:http');
 const { createNexoServer, validateMessages } = require('../Server/server');
 const { createAgent, TOOL_DEFS } = require('../Server/agent');
-const { DesktopController, NativeBridge, validateAction, validateLaunch } = require('../Server/desktop');
+const { DesktopController, NativeBridge, validateAction, validateLaunch, validateWindowTarget } = require('../Server/desktop');
 const { MicController, SerialQueue } = require('../App/conversation-state');
+const { LiveSession, buildSetupMessage, stripAdditionalProperties } = require('../Server/live');
+const { EventEmitter } = require('node:events');
 const turn = () => new Promise(resolve => setImmediate(resolve));
 
 function fakeBridge() {
@@ -16,7 +18,9 @@ function fakeBridge() {
     async observe() { calls.push('observe'); return { image: 'TEST_IMAGE_NOT_A_SCREENSHOT', width: 100, height: 50, screenWidth: 200, screenHeight: 100, left: -200, top: 0, title: 'Test', hud: [] }; },
     async act(a) { calls.push(a); return { ok: true }; },
     async launchApp(query) { calls.push({ launchApp: query }); return { ok: true }; },
-    async searchWeb(query) { calls.push({ searchWeb: query }); return { ok: true }; }
+    async searchWeb(query) { calls.push({ searchWeb: query }); return { ok: true }; },
+    async focusWindow(title) { calls.push({ focusWindow: title }); return { ok: true }; },
+    async clickByName(title, control) { calls.push({ clickByName: title, control }); return { ok: true }; }
   };
 }
 async function fixture(t, run = async () => ({ reply: 'Test', toolLog: [] }), { env = {}, fetchImpl } = {}) {
@@ -35,7 +39,7 @@ async function fixture(t, run = async () => ({ reply: 'Test', toolLog: [] }), { 
 const requestBody = { mode: 'focus', messages: [{ role: 'user', content: 'Testauftrag' }] };
 
 test('R1/R2: old process-launch/force-kill tools are absent', () => {
-  assert.deepEqual(TOOL_DEFS.map(t => t.name), ['set_mode', 'computer_observe', 'computer_action', 'launch_app', 'search_web']);
+  assert.deepEqual(TOOL_DEFS.map(t => t.name), ['set_mode', 'computer_observe', 'computer_action', 'launch_app', 'search_web', 'focus_window', 'click_by_name']);
   const fs = require('fs');
   const source = fs.readFileSync(require.resolve('../Server/server'), 'utf8');
   assert.doesNotMatch(source, /taskkill|ALLOWED_APPS|killByName|function launch/);
@@ -273,6 +277,35 @@ test('search_web opens a Google search via the bridge and the server dispatcher'
   assert.equal((await f.post('/api/chat', requestBody)).status, 200);
   assert.deepEqual(f.bridge.calls.find(c => typeof c === 'object' && c.searchWeb), { searchWeb: 'NEXO' });
 });
+test('focus_window brings a named window forward via the bridge and the server dispatcher', async t => {
+  const bridge = fakeBridge(), desktop = new DesktopController({ bridge });
+  await desktop.enable('owner');
+  const result = await desktop.focusWindow('owner', { title: 'Spotify', reason: 'Fenster nach vorne holen' });
+  assert.deepEqual(bridge.calls[0], { focusWindow: 'Spotify' });
+  assert.ok(result.frameId);
+  desktop.disable();
+  const f = await fixture(t, async ({ execute, signal }) => ({ reply: await execute('focus_window', { title: 'Spotify', reason: 'Test' }, signal) }));
+  assert.equal((await f.post('/api/chat', requestBody)).status, 200);
+  assert.deepEqual(f.bridge.calls.find(c => typeof c === 'object' && c.focusWindow), { focusWindow: 'Spotify' });
+});
+test('click_by_name activates a named control via the bridge and the server dispatcher', async t => {
+  const bridge = fakeBridge(), desktop = new DesktopController({ bridge });
+  await desktop.enable('owner');
+  const result = await desktop.clickByName('owner', { title: 'Spotify', control: 'Lyrics', reason: 'Lyrics oeffnen' });
+  assert.deepEqual(bridge.calls[0], { clickByName: 'Spotify', control: 'Lyrics' });
+  assert.ok(result.frameId);
+  desktop.disable();
+  const f = await fixture(t, async ({ execute, signal }) => ({ reply: await execute('click_by_name', { title: 'Spotify', control: 'Lyrics', reason: 'Test' }, signal) }));
+  assert.equal((await f.post('/api/chat', requestBody)).status, 200);
+  assert.deepEqual(f.bridge.calls.find(c => typeof c === 'object' && c.clickByName), { clickByName: 'Spotify', control: 'Lyrics' });
+});
+test('validateWindowTarget rejects missing/oversized title, control or reason', () => {
+  assert.throws(() => validateWindowTarget({ reason: 'Test' }));
+  assert.throws(() => validateWindowTarget({ title: 'x'.repeat(201), reason: 'Test' }));
+  assert.throws(() => validateWindowTarget({ title: 'Spotify', reason: '' }));
+  assert.throws(() => validateWindowTarget({ title: 'Spotify', reason: 'Test' }, ['control']));
+  assert.deepEqual(validateWindowTarget({ title: 'Spotify', control: 'Lyrics', reason: 'Test' }, ['control']), { title: 'Spotify', control: 'Lyrics' });
+});
 
 function micFixture() {
   const pending = [];
@@ -401,4 +434,96 @@ test('HUD omits obsolete conversation, PC-control and status copy', () => {
   for (const text of ['Mikrofon', 'Gespräch', 'Neural Interface', 'System stabil', 'Build 001', 'Bewege den Mauszeiger', 'NEXO darf meinen PC bedienen', 'pc-control'])
     assert.doesNotMatch(html, new RegExp(text, 'i'));
   assert.match(html, /id="talk"/);
+});
+
+// A minimal stand-in for the 'ws' package's per-connection socket: enough of
+// EventEmitter's `on`/`emit` plus `send`/`close`/`readyState` for LiveSession
+// to drive against, without any real network or Gemini API call.
+class FakeLiveSocket extends EventEmitter {
+  constructor() { super(); this.readyState = 0; this.sent = []; }
+  send(data) { this.sent.push(data); }
+  close() { this.readyState = 3; this.emit('close'); }
+  open() { this.readyState = 1; this.emit('open'); }
+  receive(value) { this.emit('message', Buffer.isBuffer(value) ? value : Buffer.from(JSON.stringify(value), 'utf8')); }
+}
+FakeLiveSocket.OPEN = 1;
+function fakeLiveSession(overrides = {}) {
+  const sockets = [];
+  const WebSocketImpl = function () { const s = new FakeLiveSocket(); sockets.push(s); return s; };
+  WebSocketImpl.OPEN = FakeLiveSocket.OPEN;
+  const events = [];
+  const live = new LiveSession({
+    env: { GEMINI_API_KEY: 'fake' }, controlEnabled: true, WebSocketImpl,
+    execute: async () => ({ ok: true }),
+    onAudio: buf => events.push({ type: 'audio', bytes: buf.length }),
+    onTranscript: t => events.push({ type: 'transcript', ...t }),
+    onInterrupted: () => events.push({ type: 'interrupted' }),
+    onToolLog: entry => events.push({ type: 'toolLog', ...entry }),
+    onError: err => events.push({ type: 'error', message: err.message || String(err) }),
+    onStatus: status => events.push({ type: 'status', status }),
+    ...overrides
+  });
+  return { live, sockets, events, socket: () => sockets[0] };
+}
+test('stripAdditionalProperties removes only that key, recursively', () => {
+  const cleaned = stripAdditionalProperties({ type: 'object', additionalProperties: false, properties: { a: { type: 'string', additionalProperties: false } } });
+  assert.deepEqual(cleaned, { type: 'object', properties: { a: { type: 'string' } } });
+});
+test('buildSetupMessage includes only set_mode when PC control is disabled', () => {
+  const disabled = buildSetupMessage({ env: { GEMINI_API_KEY: 'x' }, controlEnabled: false, resumeHandle: null });
+  assert.deepEqual(disabled.setup.tools[0].functionDeclarations.map(t => t.name), ['set_mode']);
+  const enabled = buildSetupMessage({ env: { GEMINI_API_KEY: 'x' }, controlEnabled: true, resumeHandle: null });
+  assert.deepEqual(enabled.setup.tools[0].functionDeclarations.map(t => t.name), TOOL_DEFS.map(t => t.name));
+  assert.doesNotMatch(JSON.stringify(enabled.setup.tools), /additionalProperties/);
+  assert.match(enabled.setup.systemInstruction.parts[0].text, /Sprachgespräch/i);
+});
+test('buildSetupMessage carries a resumption handle when given one, empty object otherwise', () => {
+  assert.deepEqual(buildSetupMessage({ env: {}, controlEnabled: false, resumeHandle: null }).setup.sessionResumption, {});
+  assert.deepEqual(buildSetupMessage({ env: {}, controlEnabled: false, resumeHandle: 'h1' }).setup.sessionResumption, { handle: 'h1' });
+});
+test('LiveSession sends the setup message once connected', () => {
+  const { socket } = fakeLiveSession();
+  socket().open();
+  assert.equal(socket().sent.length, 1);
+  assert.ok(JSON.parse(socket().sent[0]).setup);
+});
+test('LiveSession answers a tool call and only then sends the screenshot as a content turn', async () => {
+  const { live, socket, events } = fakeLiveSession({
+    execute: async name => name === 'computer_observe'
+      ? { ok: true, frameId: 'f1', image: 'BASE64', mimeType: 'image/jpeg' }
+      : { ok: true }
+  });
+  socket().open();
+  socket().receive({ setupComplete: {} });
+  socket().receive({ toolCall: { functionCalls: [{ id: 'c1', name: 'computer_observe', args: {} }] } });
+  await turn(); await turn();
+  const sent = socket().sent.slice(1).map(s => JSON.parse(s));
+  assert.equal(sent.length, 2);
+  assert.deepEqual(sent[0].toolResponse.functionResponses, [{ id: 'c1', name: 'computer_observe', response: { ok: true } }]);
+  assert.equal(sent[1].clientContent.turns[0].parts[1].inlineData.data, 'BASE64');
+  assert.deepEqual(events.find(e => e.type === 'toolLog'), { type: 'toolLog', name: 'computer_observe', result: { ok: true } });
+});
+test('LiveSession relays audio, transcripts and interruption events', () => {
+  const { socket, events } = fakeLiveSession();
+  socket().open();
+  socket().receive({ setupComplete: {} });
+  socket().receive({ serverContent: { modelTurn: { parts: [{ inlineData: { mimeType: 'audio/pcm;rate=24000', data: Buffer.from('AB').toString('base64') } }] } } });
+  socket().receive({ serverContent: { outputTranscription: { text: 'Hallo' } } });
+  socket().receive({ serverContent: { interrupted: true } });
+  assert.deepEqual(events.filter(e => e.type !== 'status'), [
+    { type: 'audio', bytes: 2 },
+    { type: 'transcript', who: 'model', text: 'Hallo' },
+    { type: 'interrupted' }
+  ]);
+});
+test('LiveSession drops a tool result once its call is cancelled', async () => {
+  let resolveExec;
+  const { live, socket } = fakeLiveSession({ execute: () => new Promise(r => { resolveExec = r; }) });
+  socket().open();
+  socket().receive({ setupComplete: {} });
+  socket().receive({ toolCall: { functionCalls: [{ id: 'c1', name: 'search_web', args: {} }] } });
+  socket().receive({ toolCallCancellation: { ids: ['c1'] } });
+  resolveExec({ ok: true });
+  await turn(); await turn();
+  assert.equal(socket().sent.slice(1).length, 0);
 });

@@ -38,6 +38,9 @@ public static class NexoDesktop {
     [DllImport("user32.dll")] static extern bool EnumWindows(EnumWindowProc proc, IntPtr param);
     [DllImport("user32.dll")] static extern bool PostMessage(IntPtr hwnd, uint msg, IntPtr wParam, IntPtr lParam);
     [DllImport("user32.dll")] static extern bool ScreenToClient(IntPtr hwnd, ref POINT point);
+    [DllImport("user32.dll")] static extern bool ShowWindow(IntPtr hwnd, int cmd);
+    [DllImport("user32.dll")] static extern bool SetForegroundWindow(IntPtr hwnd);
+    const int SW_RESTORE = 9;
     const uint WM_MOUSEMOVE=0x0200, WM_LBUTTONDOWN=0x0201, WM_LBUTTONUP=0x0202,
         WM_RBUTTONDOWN=0x0204, WM_RBUTTONUP=0x0205, WM_MOUSEWHEEL=0x020A;
     const int MK_LBUTTON=0x0001, MK_RBUTTON=0x0002;
@@ -234,5 +237,57 @@ public static class NexoDesktop {
         Dpi();CheckStop();
         string url="https://www.google.com/search?q="+Uri.EscapeDataString(query);
         Process.Start(new ProcessStartInfo(url) { UseShellExecute=true });
+    }
+    static IntPtr FindWindowByTitle(string titleContains) {
+        string needle=titleContains.ToLowerInvariant();
+        IntPtr found=IntPtr.Zero;
+        EnumWindows(delegate(IntPtr hwnd,IntPtr p) {
+            if(!IsWindowVisible(hwnd))return true;
+            string title=Title(hwnd);
+            if(string.IsNullOrEmpty(title)||IsHud(title))return true;
+            if(title.ToLowerInvariant().Contains(needle)){found=hwnd;return false;}
+            return true;
+        },IntPtr.Zero);
+        if(found==IntPtr.Zero)throw new InvalidOperationException("Kein sichtbares Fenster mit diesem Titel gefunden.");
+        return found;
+    }
+    // Brings a specific window forward by (partial) title instead of blindly
+    // pressing ALT+TAB, which just cycles to "next window" and can just as
+    // easily bring a different window forward than the one actually wanted.
+    public static void FocusWindow(string titleContains) {
+        Dpi();CheckStop();
+        IntPtr hwnd=FindWindowByTitle(titleContains);
+        ShowWindow(hwnd,SW_RESTORE);
+        SetForegroundWindow(hwnd);
+    }
+    // Finds a named, invocable control (button/link/menu item/tab/checkbox/
+    // radio/list item) inside a window via UI Automation and activates it
+    // directly - for controls a screenshot+coordinate guess struggles to hit
+    // reliably (e.g. a small "Lyrics" label), naming it is far more precise.
+    public static void ClickByName(string titleContains, string controlName) {
+        Dpi();CheckStop();
+        IntPtr hwnd=FindWindowByTitle(titleContains);
+        AutomationElement root=AutomationElement.FromHandle(hwnd);
+        Condition condition=new OrCondition(
+            new PropertyCondition(AutomationElement.ControlTypeProperty,ControlType.Button),
+            new PropertyCondition(AutomationElement.ControlTypeProperty,ControlType.Hyperlink),
+            new PropertyCondition(AutomationElement.ControlTypeProperty,ControlType.MenuItem),
+            new PropertyCondition(AutomationElement.ControlTypeProperty,ControlType.TabItem),
+            new PropertyCondition(AutomationElement.ControlTypeProperty,ControlType.CheckBox),
+            new PropertyCondition(AutomationElement.ControlTypeProperty,ControlType.RadioButton),
+            new PropertyCondition(AutomationElement.ControlTypeProperty,ControlType.ListItem));
+        string needle=controlName.ToLowerInvariant();
+        AutomationElement match=null;
+        foreach(AutomationElement el in root.FindAll(TreeScope.Descendants,condition)) {
+            CheckStop();
+            string name=el.Current.Name??"";
+            if(name.ToLowerInvariant().Contains(needle)){match=el;break;}
+        }
+        if(match==null)throw new InvalidOperationException("Kein passendes Bedienelement mit diesem Namen gefunden.");
+        object pattern;
+        if(match.TryGetCurrentPattern(InvokePattern.Pattern,out pattern))((InvokePattern)pattern).Invoke();
+        else if(match.TryGetCurrentPattern(SelectionItemPattern.Pattern,out pattern))((SelectionItemPattern)pattern).Select();
+        else if(match.TryGetCurrentPattern(TogglePattern.Pattern,out pattern))((TogglePattern)pattern).Toggle();
+        else throw new InvalidOperationException("Bedienelement unterstützt keine direkte Aktion.");
     }
 }

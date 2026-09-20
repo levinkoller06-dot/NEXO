@@ -1,9 +1,9 @@
 # Aktueller Stand – NEXO
 
-Stand: 20.09.2026 · Schritt 027 (Karen-Techniken: UIA-Klicks, Websuche, Barge-in)
+Stand: 20.09.2026 · Schritt 028 (Gemini-Live-API: Phase A und B)
 
 ## Funktioniert
-HUD mit 99.220 Punkten aus einem 3D-Kopfmodell, Mausverfolgung (immer aktiv, ohne Ausschalter), Blinzeln, Mundanimation während Sprachausgabe, Farb-/Partikelübergängen, Großansicht, Browsernotiz und Fokus-Timer. Lokaler Node-Server mit Cloud-Anbietern: Fokus/Bereit → Gemini (ohne Thinking im reinen Chat, dynamisches Denken bei PC-Steuerung), Energie → OpenAI. Browser-Spracherkennung (Mikrofon startet automatisch, bleibt auch während der Sprachausgabe aktiv – Unterbrechen mitten im Sprechen möglich) und Gemini-Sprachausgabe (Stimme "Charon", satzweise gestreamt), Gesprächsverlauf nur noch im Kern. Sichtbare Statuszeile ("Denkt nach …", "Hört zu.") über dem Kopf. NEXO aktiviert die allgemeine Desktopsteuerung automatisch für die aktive Sitzung und plant Bildschirm-, Maus- und Tastaturaktionen; Klicks laufen standardmäßig unsichtbar über UI Automation, sonst Fensternachricht, sonst echte Maus (`pointer=visible`); `launch_app` öffnet Programme, `search_web` öffnet eine Google-Suche direkt. Sensible Aktionen benötigen Bestätigung; Strg+Alt+F12 bleibt als unsichtbare Notabschaltung.
+HUD mit 99.220 Punkten aus einem 3D-Kopfmodell, Mausverfolgung (immer aktiv, ohne Ausschalter), Blinzeln, Mundanimation während Sprachausgabe, Farb-/Partikelübergängen, Großansicht, Browsernotiz und Fokus-Timer. Lokaler Node-Server mit Cloud-Anbietern: Fokus/Bereit → Gemini (ohne Thinking im reinen Chat, dynamisches Denken bei PC-Steuerung), Energie → OpenAI. Das bisherige Gespräch (Browser-Spracherkennung, Barge-in, Gemini-Sprachausgabe über `/api/speech`) läuft unverändert über den alten HTTP-Pfad. Zusätzlich existiert jetzt eine server-seitige Gemini-**Live**-Verbindung (`Code/Server/live.js`, `/ws/voice`) für eine geplante Dauerverbindungs-Architektur wie im Referenzprojekt "Karen" – live gegen die echte API validiert, aber noch nicht an den Browser angebunden. NEXO aktiviert die allgemeine Desktopsteuerung automatisch für die aktive Sitzung und plant Bildschirm-, Maus- und Tastaturaktionen; Klicks laufen standardmäßig unsichtbar über UI Automation, sonst Fensternachricht, sonst echte Maus (`pointer=visible`); `launch_app` öffnet Programme, `search_web` öffnet eine Google-Suche direkt, `focus_window` holt ein Fenster gezielt per Titel nach vorne, `click_by_name` trifft benannte Bedienelemente ohne Koordinaten. Sensible Aktionen benötigen Bestätigung; Strg+Alt+F12 bleibt als unsichtbare Notabschaltung.
 
 ## Behobene Befunde aus der Analyse
 [[019 2026-09-20 Analyse der Aenderungen]] enthielt sieben Befunde. [[020 2026-09-20 KI-Desktopsteuerung und Fehlerbehebung]] dokumentiert die Behebungen: kein erzwungenes Prozess-Schließen mehr, kontrollierte Helper-Fehler, geschützte lokale API, stabiler Mikrofon- und Anfrageablauf, mehrere Modell-/Werkzeugrunden sowie sichere URL-Fehlerbehandlung.
@@ -42,6 +42,7 @@ Cloud-KI bei lokal laufender Oberfläche und lokalem Server. OpenAI/Gemini sind 
 - [[025 2026-09-20 Bewegungs-Fix, Stimmklaerung und unsichtbare Maus]]
 - [[026 2026-09-20 Denkbudget fuer PC-Steuerung und sicheres launch_app]]
 - [[027 2026-09-20 Karen-Techniken - UIA-Klicks, Websuche, Barge-in]]
+- [[028 2026-09-20 Live-API Phase A und B]]
 
 Nach jedem abgeschlossenen Arbeits- oder Planungsschritt entsteht hier eine neue nummerierte Notiz im Ordner `Schritte`. Code und Notiz werden gemeinsam auf GitHub gesichert.
 
