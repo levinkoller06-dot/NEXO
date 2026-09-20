@@ -156,7 +156,7 @@ class DesktopController {
   }
   assertEnabled(owner, signal) {
     checkAbort(signal);
-    if (this.owner !== owner || !this.stopWatcher) throw new Error('PC-Steuerung im HUD einschalten, bevor NEXO den Bildschirm ansehen oder bedienen darf.');
+    if (this.owner !== owner || !this.stopWatcher) throw new Error('PC-Steuerung dieser NEXO-Sitzung ist momentan nicht verfügbar.');
   }
   async observe(owner, signal) {
     this.assertEnabled(owner, signal);

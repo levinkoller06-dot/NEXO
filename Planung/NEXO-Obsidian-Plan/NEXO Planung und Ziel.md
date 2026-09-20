@@ -1,9 +1,9 @@
 # NEXO Planung und Ziel
 
-Stand: 20.09.2026 · Schritt 020 (KI-Desktopsteuerung ergänzt, Zielplan fortgeschrieben)
+Stand: 20.09.2026 · Schritt 021 (HUD vereinfacht, Desktopsteuerung automatisch)
 Zielbild: Cloud-basierte persönliche Assistenz für PC, Handy und Telefon
 
-Die Nummern 000–015 unten sind Planungsphasen; die fortlaufenden Arbeitsnotizen unter `Schritte/` haben eine eigene Nummerierung. Zum aktuellen Code und seinen Grenzen siehe [[1 Aktueller Stand]], [[019 2026-09-20 Analyse der Aenderungen]] und [[020 2026-09-20 KI-Desktopsteuerung und Fehlerbehebung]].
+Die Nummern 000–015 unten sind Planungsphasen; die fortlaufenden Arbeitsnotizen unter `Schritte/` haben eine eigene Nummerierung. Zum aktuellen Code und seinen Grenzen siehe [[1 Aktueller Stand]], [[019 2026-09-20 Analyse der Aenderungen]], [[020 2026-09-20 KI-Desktopsteuerung und Fehlerbehebung]] und [[021 2026-09-20 HUD vereinfacht und Mikrofon repariert]].
 
 ## Das Ziel
 
@@ -35,10 +35,11 @@ Das Ziel ist eine Cloud-KI, die:
 - Browser-Spracherkennung, Browser-Sprachausgabe und Gesprächsverlauf in der Sitzung.
 - Feste Anbieterzuordnung: Fokus → Gemini; Bereit/Energie → OpenAI.
 - KI-gestützte Desktopsteuerung über Bildschirmbeobachtung sowie Maus-, Tastatur-, Text-, Scroll- und Warteaktionen.
-- Explizite PC-Freigabe, sensible-Aktion-Bestätigung, Ablaufzeit, Stoppschalter und Schutz vor NEXO-eigenen Fenstern.
+- Automatische PC-Steuerung für die aktive Sitzung, sensible-Aktion-Bestätigung, Ablaufzeit, unsichtbare Notabschaltung und Schutz vor NEXO-eigenen Fenstern.
+- Gesprächsfenster und Texteingabe aus dem HUD entfernt; Mikrofonstatus und Ent-/Stummschaltung stabilisiert.
 - Großansicht, Pause, Zentrieren, Browsernotiz und Fokus-Timer.
 
-Diese Funktionen sind Prototypen. Die sieben Befunde aus Schritt 019 sind im Code behoben und in Schritt 020 getestet. Echte Interaktion mit dem Benutzer-PC, Mikrofon und globalem Stop-Hotkey muss noch praktisch geprüft werden.
+Diese Funktionen sind Prototypen. Die sieben Befunde aus Schritt 019 sind im Code behoben und in Schritt 020 getestet. Die Änderungen aus Schritt 021 sind per Regressionstest geprüft; echte Interaktion mit dem Benutzer-PC, Mikrofon und globalem Stop-Hotkey muss noch praktisch geprüft werden.
 
 ## Was heute noch nicht funktioniert
 
@@ -125,7 +126,7 @@ Aufgaben: Kleine lokale Bridge, verschlüsselte Geräte-Paarung, Werkzeugkatalog
 
 Erste Werkzeuge: Programm öffnen, Datei suchen und Lautstärke ändern.
 
-Fertig, wenn: NEXO freigegebene Desktopaktionen über eine lokale Bridge ausführt, jede Aktion nachvollziehbar ist und der Stoppschalter funktioniert. Die erste Umsetzung aus Schritt 020 ist ein Prototyp; Paarung und Geräteverwaltung folgen später.
+Fertig, wenn: NEXO Desktopaktionen über eine lokale Bridge ausführt, jede Aktion nachvollziehbar ist und die Notabschaltung funktioniert. Die automatische Umsetzung aus Schritt 021 ist ein Prototyp; Paarung und Geräteverwaltung folgen später.
 
 ### Schritt 008 – Berechtigungen und Bestätigungen
 
@@ -203,4 +204,4 @@ Fertig, wenn: Ein Fehler keine stillen PC-Aktionen verursacht und der komplette 
 
 ## Aktueller nächster Schritt
 
-Als Nächstes die Desktopsteuerung praktisch im HUD testen: Fokus-Modus wählen, PC-Steuerung freigeben und eine harmlose Aufgabe ohne Speichern ausführen. Danach folgen Geräte-Paarung, dauerhafte Sitzungen und der Cloud-Core. [[020 2026-09-20 KI-Desktopsteuerung und Fehlerbehebung]] enthält den aktuellen Testauftrag.
+Als Nächstes die Desktopsteuerung praktisch im HUD testen: Fokus-Modus wählen, Mikrofon einschalten und eine harmlose Aufgabe ohne Speichern ausführen. Danach folgen Geräte-Paarung, dauerhafte Sitzungen und der Cloud-Core. [[021 2026-09-20 HUD vereinfacht und Mikrofon repariert]] enthält den aktuellen Testauftrag.

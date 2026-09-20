@@ -121,8 +121,12 @@ function createNexoServer({ env = process.env, bridge, agent = createAgent({ env
       }
       if (req.method === 'GET' && route === '/api/session') {
         if (sessions.size >= 16) throw failure(429, 'Zu viele offene Sitzungen. NEXO-Fenster schließen.');
+        if (job) throw failure(409, 'NEXO bearbeitet bereits einen Auftrag.');
         const id = crypto.randomBytes(32).toString('hex'), token = crypto.randomBytes(32).toString('hex');
+        if (desktop.owner) desktop.disable('Neue NEXO-Sitzung verbunden.');
         sessions.set(id, { token, seen: Date.now(), log: [] });
+        try { await desktop.enable(id); }
+        catch (err) { sessions.delete(id); throw failure(503, 'PC-Steuerung konnte nicht gestartet werden: ' + err.message); }
         return json(res, 200, { token }, { 'Set-Cookie': 'nexoSession=' + id + '; HttpOnly; SameSite=Strict; Path=/' });
       }
       if (!route.startsWith('/api/')) return await staticFile(route, req, res);
@@ -138,13 +142,6 @@ function createNexoServer({ env = process.env, bridge, agent = createAgent({ env
       if (route === '/api/stop') {
         stopAll('Vom Nutzer gestoppt.');
         return json(res, 200, { ok: true });
-      }
-      if (route === '/api/control') {
-        if (typeof body.enabled !== 'boolean') throw failure(400, 'Freigabe fehlt.');
-        if (job) throw failure(409, 'Zuerst den laufenden Auftrag stoppen.');
-        if (body.enabled) await desktop.enable(current.id);
-        else if (desktop.owner === current.id) desktop.disable();
-        return json(res, 200, desktop.status(current.id));
       }
       if (route === '/api/approve') {
         if (typeof body.approved !== 'boolean' || typeof body.id !== 'string') throw failure(400, 'Ungültige Bestätigung.');

@@ -10,7 +10,8 @@ function showError(err) {
 function addTurn(role, text) {
   conversationHistory.push({ role, content: text });
   while (conversationHistory.length > 24 || conversationHistory.reduce((n, h) => n + h.content.length, 0) > 16000) conversationHistory.shift();
-  const list = $('transcript-log');
+  const list = document.getElementById('transcript-log');
+  if (!list) return;
   list.querySelector('.transcript-empty')?.remove();
   const li = document.createElement('li'); li.className = role;
   li.textContent = (role === 'user' ? 'Du: ' : 'NEXO: ') + text; list.appendChild(li);
@@ -39,7 +40,9 @@ function say(text, signal) {
 const queue = new NexoConversationState.SerialQueue({
   onBusy(value) {
     busy = value; mic?.setBusy(value);
-    $('send').disabled = value; $('command').setAttribute('aria-busy', String(value));
+    const send = document.getElementById('send'), command = document.getElementById('command');
+    if (send) send.disabled = value;
+    if (command) command.setAttribute('aria-busy', String(value));
     if (!value) { setTalkStatus(mic?.wanted ? 'HÖRT ZU' : 'AUS'); }
   },
   onError: showError,
@@ -83,32 +86,15 @@ if (SpeechRecognitionImpl) {
   $('talk').onclick = () => { mic.setWanted(!mic.wanted); if (!busy) setTalkStatus(mic.wanted ? 'HÖRT ZU' : 'AUS'); };
 } else {
   $('talk').disabled = true; $('talk').classList.add('muted');
-  $('talk-hint').textContent = 'SPRACHE NICHT VERFÜGBAR · AUFTRAG RECHTS EINTIPPEN';
+  $('talk-hint').textContent = 'SPRACHE NICHT VERFÜGBAR';
 }
-$('command-form').onsubmit = event => {
-  event.preventDefault();
-  const text = $('command').value.trim();
-  if (!text || busy) return;
-  $('command').value = ''; queue.push(text.slice(0, 8000));
-};
 function stopLocally() { mic?.setWanted(false); queue.stop(); cancelSpeech(); $('state').textContent = 'Gestoppt.'; setTalkStatus('AUS'); }
 window.nexoStop = async () => {
   stopLocally();
   try { await NexoApi.post('/api/stop', {}); } catch (err) { showError(err); }
 };
-$('stop').onclick = window.nexoStop;
-$('approval-stop').onclick = () => { $('approval').close(); void window.nexoStop(); };
 document.addEventListener('keydown', e => { if (e.ctrlKey && e.altKey && e.key === 'F12') { e.preventDefault(); void window.nexoStop(); } });
-let pcEnabled = false, approvalId = null, leaving = false;
-$('pc-control').onchange = async () => {
-  const requested = $('pc-control').checked; $('pc-control').disabled = true;
-  try {
-    if (!requested && busy) await window.nexoStop();
-    else await NexoApi.post('/api/control', { enabled: requested });
-    pcEnabled = requested;
-  } catch (err) { $('pc-control').checked = pcEnabled; showError(err); }
-  finally { $('pc-control').disabled = false; }
-};
+let approvalId = null, leaving = false;
 async function answerApproval(approved) {
   if (!approvalId) return;
   const id = approvalId; approvalId = null; $('approval').close(); $('approval-image').removeAttribute('src');
@@ -121,14 +107,7 @@ async function poll() {
   if (leaving) return;
   try {
     const data = await NexoApi.get('/api/status');
-    if (pcEnabled && !data.enabled) stopLocally();
-    pcEnabled = data.enabled; $('pc-control').checked = data.enabled;
-    $('pc-status').textContent = data.enabled ? (data.ownJob ? 'KI bedient den PC' : 'Für diese Sitzung freigegeben') : 'Aus';
     if (data.mode && data.mode.id !== lastModeEvent) { lastModeEvent = data.mode.id; window.nexoSetMode(data.mode.name); }
-    const list = $('agent-actions'); list.replaceChildren();
-    for (const item of data.log.slice(-5)) {
-      const li = document.createElement('li'); li.textContent = (item.result.ok ? '✓ ' : '× ') + item.reason + (item.result.ok ? '' : ': ' + item.result.message); list.appendChild(li);
-    }
     if (data.approval && approvalId !== data.approval.id) {
       approvalId = data.approval.id;
       $('approval-reason').textContent = data.approval.reason;
@@ -140,7 +119,7 @@ async function poll() {
     } else if (!data.approval && approvalId) {
       approvalId = null; $('approval').close(); $('approval-image').removeAttribute('src');
     }
-  } catch (err) { if (err.status === 401) { stopLocally(); pcEnabled = false; $('pc-control').checked = false; $('pc-control').disabled = true; $('pc-status').textContent = 'Sitzung abgelaufen'; showError(err); return; } }
+  } catch (err) { if (err.status === 401) { stopLocally(); showError(err); return; } }
   setTimeout(poll, 1000);
 }
 NexoApi.ready().then(poll).catch(showError);

@@ -83,12 +83,12 @@ test('Only one server task at a time; stop aborts it', async t => {
   assert.equal((await f.post('/api/stop', {})).status, 200);
   const response = await first; assert.equal(response.status, 409); assert.equal((await response.json()).stopped, true);
 });
-test('Desktop remains disabled until explicit session control grant', async t => {
+test('Desktop control is enabled automatically for the session', async t => {
   const f = await fixture(t, async ({ execute, signal }) => ({ reply: await execute('computer_observe', {}, signal) }));
-  assert.equal((await f.post('/api/chat', requestBody)).status, 502);
-  assert.deepEqual(f.bridge.calls, []);
-  assert.equal((await f.post('/api/control', { enabled: true })).status, 200);
-  assert.deepEqual(f.bridge.calls, []); // grant alone takes no screenshot
+  assert.equal(f.desktop.owner !== null, true);
+  assert.equal((await f.post('/api/chat', requestBody)).status, 200);
+  assert.deepEqual(f.bridge.calls, ['observe']);
+  assert.equal((await f.post('/api/control', { enabled: true })).status, 404);
   await f.post('/api/stop', {});
   assert.equal(f.desktop.owner, null);
 });
@@ -182,7 +182,7 @@ test('Desktop validates coordinates and consumes old frames; negative monitor of
 test('No actions on stale frame or without grant', async () => {
   let now = 1000;
   const desktop = new DesktopController({ bridge: fakeBridge(), now: () => now });
-  await assert.rejects(desktop.observe('owner'), /einschalten/);
+  await assert.rejects(desktop.observe('owner'), /nicht verfügbar/);
   await desktop.enable('owner'); const shot = await desktop.observe('owner'); now += 45001;
   await assert.rejects(desktop.action('owner', { action: 'key', key: 'WIN', reason: 'Test', risk: 'routine', frameId: shot.frameId }), /veraltet/);
   desktop.disable();
@@ -244,6 +244,12 @@ test('R4: fast off/on waits for old recognition to finish', () => {
   mic.setWanted(true); mic.setWanted(false); mic.setWanted(true);
   assert.equal(rec.starts, 1);
   rec.onend(); flush(); assert.equal(rec.starts, 2);
+});
+test('R4: aborted recognition can be enabled again without onend', () => {
+  const { rec, mic, flush } = micFixture();
+  mic.setWanted(true); rec.onstart(); mic.setWanted(false); mic.setWanted(true);
+  rec.onerror({ error: 'aborted' }); flush();
+  assert.equal(rec.starts, 2); assert.equal(mic.wanted, true);
 });
 test('R5: busy state immediately pauses recognition and resumes after work', () => {
   const { rec, mic, flush } = micFixture();

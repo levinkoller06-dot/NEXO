@@ -7,8 +7,8 @@ NEXO verbindet das Partikelgesicht mit Sprachgesprächen und einer KI, die den W
 1. Im Code-Ordner **NEXO starten.cmd** öffnen.
 2. Der Starthelfer wartet auf den lokalen Server und öffnet dann das Edge-App-Fenster.
 3. **Fokus** verwendet Gemini; **Bereit/Energie** verwenden OpenAI.
-4. Einen Auftrag rechts eintippen oder das Mikrofon einschalten.
-5. Für Bildschirm- und PC-Aufgaben den Schalter **NEXO darf meinen PC bedienen** einschalten.
+4. Das Mikrofon einschalten und einen Auftrag sprechen.
+5. Die PC-Steuerung ist für die aktive Sitzung automatisch verfügbar.
 
 Voraussetzungen: Windows, Node.js 20 oder neuer, Windows PowerShell 5.1 mit .NET/Windows Forms. Edge wird bevorzugt; sonst öffnet der Standardbrowser. Der Server läuft nur auf 127.0.0.1 (Standardport 4790).
 
@@ -29,13 +29,13 @@ Die KI sieht einen aktuellen Screenshot, wählt eine allgemeine Aktion, erhält 
 
 Es gibt keine fest hinterlegten Abläufe für bestimmte Apps. Zum Öffnen eines Programms kann das Modell beispielsweise selbst die Windows-Suche bedienen. Zum Schließen benutzt es die Oberfläche; eine Funktion zum erzwungenen Beenden aller Prozesse wurde entfernt.
 
-Bildschirmbilder gehen nur bei eingeschalteter PC-Steuerung und einer durch die KI angeforderten Beobachtung an den aktiven Cloud-Anbieter. Sie können alles enthalten, was auf den Monitoren sichtbar ist. NEXO speichert sie nicht auf der Festplatte. Im laufenden Modellkontext bleiben höchstens zwei Bilder; der Gesprächsverlauf im HUD ist ebenfalls begrenzt.
+Bildschirmbilder gehen bei einer durch die KI angeforderten Beobachtung an den aktiven Cloud-Anbieter. Sie können alles enthalten, was auf den Monitoren sichtbar ist. NEXO speichert sie nicht auf der Festplatte. Im laufenden Modellkontext bleiben höchstens zwei Bilder.
 
 ## Stopp und Bestätigungen
 
-- **Stopp** im HUD oder **Strg + Alt + F12** beendet den Auftrag und entzieht die PC-Freigabe.
+- **Strg + Alt + F12** beendet den Auftrag und entzieht die PC-Steuerung. Der sichtbare Stopp-Knopf wurde aus der Oberfläche entfernt.
 - Schließen oder Verbindungsverlust des HUD beendet die Steuerung spätestens nach Ablauf des 15-Sekunden-Verbindungschecks; eine direkt erkannte Trennung stoppt sofort.
-- Die PC-Freigabe gilt nur für die Sitzung. Ein neuer Start verlangt eine neue Freigabe.
+- Die PC-Steuerung startet automatisch mit jeder neuen HUD-Sitzung.
 - Folgenreiche Aktionen werden von der KI als sensitive markiert und im HUD als konkreter Schritt mit Vorschau vorgelegt. Delete und Alt+F4 erzwingen zusätzlich eine Bestätigung im Code. Nach Freigabe muss NEXO den Bildschirm erneut ansehen.
 - Die Einordnung beliebiger visueller Aktionen hängt weiterhin vom Modell ab. Das ist keine vollständige technische Erkennung aller riskanten Klicks.
 - Der Windows-Helfer blockiert Eingaben auf NEXOs eigenen Fenstern, um Selbstbestätigungen zu verhindern. Betriebssystemrechte und Administratorabfragen werden nicht umgangen.
@@ -43,7 +43,7 @@ Bildschirmbilder gehen nur bei eingeschalteter PC-Steuerung und einer durch die 
 
 ## Gespräch und HUD
 
-Spracheingaben werden während der Antwortverarbeitung pausiert und danach bei eingeschaltetem Gespräch wieder aktiviert. Mikrofonfehler werden angezeigt. Textaufträge funktionieren auch ohne Mikrofon. Die Mundbewegung begleitet die Sprachausgabe; sie ist keine lautgenaue Lippensynchronisation.
+Spracheingaben werden während der Antwortverarbeitung pausiert und danach bei eingeschaltetem Gespräch wieder aktiviert. Der sichtbare Gesprächsverlauf und das Texteingabefeld wurden entfernt; NEXO wird über das Mikrofon bedient. Mikrofonfehler werden angezeigt. Die Mundbewegung begleitet die Sprachausgabe; sie ist keine lautgenaue Lippensynchronisation.
 
 Großansicht, Bewegungspause, Zentrieren, drei Farbmodi, Browsernotiz und 25-Minuten-Timer bleiben enthalten. Notizen werden nicht nach Obsidian synchronisiert. Der Timer läuft nur bei offenem Fenster. Kalender, Handy-App, Push und Telefonie sind noch nicht integriert.
 

@@ -1,9 +1,9 @@
 # Aktueller Stand – NEXO
 
-Stand: 20.09.2026 · Schritt 020 (KI-gestützte Desktopsteuerung und Fehlerbehebung)
+Stand: 20.09.2026 · Schritt 021 (HUD vereinfacht und Mikrofon repariert)
 
 ## Funktioniert
-HUD mit 99.220 Punkten aus einem 3D-Kopfmodell, Mausverfolgung, Blinzeln, Mundanimation während Sprachausgabe, Farb-/Partikelübergängen, Großansicht, Pause, Browsernotiz und Fokus-Timer. Lokaler Node-Server mit Cloud-Anbietern: Fokus → Gemini, Bereit/Energie → OpenAI. Browser-Spracherkennung und Sprachausgabe, Gesprächsverlauf in der Sitzung. NEXO kann nach ausdrücklicher Freigabe Bildschirmbilder an das aktive Modell senden und daraus einzelne Maus-/Tastaturaktionen planen. Sensible Aktionen benötigen Bestätigung; der globale Stoppschalter bleibt verfügbar.
+HUD mit 99.220 Punkten aus einem 3D-Kopfmodell, Mausverfolgung, Blinzeln, Mundanimation während Sprachausgabe, Farb-/Partikelübergängen, Großansicht, Pause, Browsernotiz und Fokus-Timer. Lokaler Node-Server mit Cloud-Anbietern: Fokus → Gemini, Bereit/Energie → OpenAI. Browser-Spracherkennung und Sprachausgabe, Gesprächsverlauf nur noch im Kern. NEXO aktiviert die allgemeine Desktopsteuerung automatisch für die aktive Sitzung und plant Bildschirm-, Maus- und Tastaturaktionen. Sensible Aktionen benötigen Bestätigung; Strg+Alt+F12 bleibt als unsichtbare Notabschaltung.
 
 ## Behobene Befunde aus der Analyse
 [[019 2026-09-20 Analyse der Aenderungen]] enthielt sieben Befunde. [[020 2026-09-20 KI-Desktopsteuerung und Fehlerbehebung]] dokumentiert die Behebungen: kein erzwungenes Prozess-Schließen mehr, kontrollierte Helper-Fehler, geschützte lokale API, stabiler Mikrofon- und Anfrageablauf, mehrere Modell-/Werkzeugrunden sowie sichere URL-Fehlerbehandlung.
@@ -35,6 +35,7 @@ Cloud-KI bei lokal laufender Oberfläche und lokalem Server. OpenAI/Gemini sind 
 - [[018 2026-09-20 Erweiterte PC-Steuerung, Modus per Sprache, verstecktes Serverfenster]]
 - [[019 2026-09-20 Analyse der Aenderungen]]
 - [[020 2026-09-20 KI-Desktopsteuerung und Fehlerbehebung]]
+- [[021 2026-09-20 HUD vereinfacht und Mikrofon repariert]]
 
 Nach jedem abgeschlossenen Arbeits- oder Planungsschritt entsteht hier eine neue nummerierte Notiz im Ordner `Schritte`. Code und Notiz werden gemeinsam auf GitHub gesichert.
 
