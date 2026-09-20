@@ -43,7 +43,7 @@ Bildschirmbilder gehen bei einer durch die KI angeforderten Beobachtung an den a
 
 ## Gespräch und HUD
 
-Spracheingaben werden während der Antwortverarbeitung pausiert und danach bei eingeschaltetem Gespräch wieder aktiviert. Der sichtbare Gesprächsverlauf und das Texteingabefeld wurden entfernt; NEXO wird über das Mikrofon bedient. Mikrofonfehler werden angezeigt. Die Mundbewegung begleitet die Sprachausgabe; sie ist keine lautgenaue Lippensynchronisation.
+Spracheingaben werden während der Antwortverarbeitung pausiert und danach bei eingeschaltetem Gespräch wieder aktiviert. Der sichtbare Gesprächsverlauf und das Texteingabefeld wurden entfernt; NEXO wird über das Mikrofon bedient. Wenn die Edge-App keine SpeechRecognition-API anbietet, nimmt MediaRecorder den kurzen Clip auf und sendet ihn an Gemini. Die Mundbewegung begleitet die Sprachausgabe; sie ist keine lautgenaue Lippensynchronisation.
 
 Großansicht, Bewegungspause, Zentrieren, drei Farbmodi, Browsernotiz und 25-Minuten-Timer bleiben enthalten. Notizen werden nicht nach Obsidian synchronisiert. Der Timer läuft nur bei offenem Fenster. Kalender, Handy-App, Push und Telefonie sind noch nicht integriert.
 

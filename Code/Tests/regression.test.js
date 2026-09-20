@@ -286,6 +286,13 @@ test('OpenAI vision sends an image input after tool results, never as a text blo
   assert.equal(captured[1].body.messages.at(-1).content[1].image_url.url, 'data:image/jpeg;base64,FAKE');
   assert.equal(captured[1].body.messages.at(-2).role, 'tool');
 });
+test('Gemini voice fallback sends audio as inline data', async () => {
+  const captured = [];
+  const agent = createAgent({ env: { GEMINI_API_KEY: 'fake' }, fetchImpl: providerMock([gemini([{ text: 'Verstanden' }])], captured) });
+  const result = await agent.run({ ...requestBody, mode: 'standby', providerOverride: 'gemini', audio: { mimeType: 'audio/webm', data: 'AAAA' }, execute: async () => ({ ok: true }) });
+  assert.equal(result.reply, 'Verstanden');
+  assert.deepEqual(captured[0].body.contents.at(-1).parts.at(-1), { inlineData: { mimeType: 'audio/webm', data: 'AAAA' } });
+});
 test('Stop during observation discards the image and invalidates the frame', async () => {
   const bridge = fakeBridge(); let resolve;
   bridge.observe = () => new Promise(done => { resolve = done; });

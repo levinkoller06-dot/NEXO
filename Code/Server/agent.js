@@ -37,7 +37,7 @@ function trimImages(turns, provider) {
     const parts = provider === 'openai' ? turns[i].content : turns[i].parts;
     if (!Array.isArray(parts)) continue;
     const filtered = parts.filter(part => {
-      const image = provider === 'openai' ? part.type === 'image_url' : !!part.inlineData;
+      const image = provider === 'openai' ? part.type === 'image_url' : part.inlineData?.mimeType?.startsWith('image/');
       return !image || --remaining >= 0;
     });
     if (provider === 'openai') turns[i].content = filtered;
@@ -70,8 +70,8 @@ function createAgent({ env = process.env, fetchImpl = fetch, maxRounds = 24, max
     }
     return data;
   }
-  async function run({ messages, mode, signal, execute, onTool = () => {}, controlEnabled = false }) {
-    const provider = MODE_PROVIDER[mode] || 'openai';
+  async function run({ messages, mode, providerOverride, audio, signal, execute, onTool = () => {}, controlEnabled = false }) {
+    const provider = providerOverride || MODE_PROVIDER[mode] || 'openai';
     const defs = TOOL_DEFS.filter(t => controlEnabled || t.name === 'set_mode');
     const upperTypes = value => {
       if (Array.isArray(value)) return value.map(upperTypes);
@@ -84,6 +84,12 @@ function createAgent({ env = process.env, fetchImpl = fetch, maxRounds = 24, max
     const turns = provider === 'openai'
       ? [{ role: 'system', content: SYSTEM_PROMPT }, ...messages.map(m => ({ ...m }))]
       : messages.map(m => ({ role: m.role === 'assistant' ? 'model' : 'user', parts: [{ text: m.content }] }));
+    if (audio) {
+      if (provider !== 'gemini') throw new Error('Audio-Fallback benötigt Gemini.');
+      const last = turns.at(-1);
+      if (!last || last.role !== 'user') throw new Error('Audionachricht braucht einen Nutzereintrag.');
+      last.parts.push({ inlineData: { mimeType: audio.mimeType, data: audio.data } });
+    }
     const toolLog = [];
     let callsUsed = 0;
     for (let round = 0; round < maxRounds; round++) {

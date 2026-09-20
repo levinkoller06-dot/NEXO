@@ -24,6 +24,10 @@ Die Spracherkennung reagierte weiterhin nicht zuverlässig. Außerdem sollen die
 - Die echte Browser-Mikrofonfreigabe muss einmal beim Neustart bestätigt werden, falls der Browser danach fragt.
 - Eine bereits geöffnete alte HUD-Seite zeigt ihren alten DOM weiter; sie muss geschlossen und über `Code/NEXO starten.cmd` neu geöffnet werden.
 
+## Ergänzung aus Schritt 023
+
+Wenn der Edge-App-Modus keine SpeechRecognition-API bereitstellt, nutzt NEXO jetzt MediaRecorder und überträgt den kurzen Audioclip an Gemini. So bleibt der Sprachbutton auch ohne browserinterne Transkription nutzbar.
+
 ## Nächster Testauftrag
 
 Alte NEXO-Seite schließen, `Code/NEXO starten.cmd` öffnen, den Mikrofonbutton drücken, die Browserfreigabe zulassen, einen kurzen Satz sprechen, erneut drücken und wieder drücken. Danach einen harmlosen Desktopauftrag ohne Speichern sprechen.

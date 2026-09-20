@@ -1,6 +1,6 @@
 # NEXO – aktueller Projektstand
 
-Stand: 20.09.2026 · Schritt 022
+Stand: 20.09.2026 · Schritt 023
 
 ## Aktueller Auftrag und Ergebnis
 Die sieben Befunde aus Schritt 019 wurden bearbeitet. Die bisherige App-Liste wurde durch allgemeine, von der KI ausgewählte Bildschirm-, Maus- und Tastaturaktionen ersetzt. Der Nutzer hat diese Erweiterung ausdrücklich beauftragt. Historische Aussagen aus Schritt 018 zur fehlenden Maussteuerung beschreiben nicht mehr den aktuellen Stand.
@@ -32,7 +32,7 @@ Die sieben Befunde aus Schritt 019 wurden bearbeitet. Die bisherige App-Liste wu
 - Notizen bleiben browserlokal; kein Schreiben nach Obsidian aus der App.
 
 ## Nachweise aus Schritt 021
-- 32 Regressionstests erfolgreich: automatische Sitzungsfreigabe, Entfernen des Gesprächsfensters und alter Status-Texte, Ent-/Stummschaltung einschließlich `aborted`-Recovery sowie die bisherigen R1–R7-Fälle.
+- 33 Regressionstests erfolgreich: automatische Sitzungsfreigabe, Entfernen des Gesprächsfensters und alter Status-Texte, Ent-/Stummschaltung einschließlich `aborted`-Recovery, Gemini-Audio-Fallback sowie die bisherigen R1–R7-Fälle.
 - Windows-Helfer mit -CheckOnly kompiliert, native INPUT-Struktur auf diesem Windows-System 40 Byte.
 - Starthelfer mit -CheckOnly geprüft: Node vorhanden, Port 4790.
 - Echter Gemini-Aufruf mit künstlichem Testbild: computer_observe → set_mode → Antwort OK erfolgreich. Keine echten Desktop-Bilder übertragen oder PC-Aktionen dabei ausgeführt.
@@ -47,7 +47,7 @@ Pfade ab Repository-Stamm:
 - Code/Server/desktop.js, desktop.ps1, desktop-native.cs: Windows-Steuerung.
 - Code/Server/launch.ps1: Start und Versionsprüfung.
 - Code/Tests/regression.test.js: Tests ohne echte Desktop-Aktionen.
-- Planung/NEXO-Obsidian-Plan/Schritte/022 2026-09-20 Mikrofonzugriff und HUD-Texte bereinigt.md: vollständige Übergabe.
+- Planung/NEXO-Obsidian-Plan/Schritte/023 2026-09-20 Audio-Fallback für Edge-App ergänzt.md: vollständige Übergabe.
 - Planung/NEXO-Obsidian-Plan/NEXO Planung und Ziel.md: langfristiges Ziel.
 
 ## Als Nächstes

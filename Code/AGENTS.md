@@ -25,3 +25,4 @@
 - `NEXO starten.cmd`: versteckter Start über `Server/launch.ps1`, wartet auf den Server und öffnet das HUD. Port stammt aus .env (Standard 4790).
 - PC-Steuerung wird beim Erstellen einer HUD-Sitzung automatisch aktiviert; die sichtbare Freigabebox wurde entfernt. Strg+Alt+F12 bleibt als unsichtbare Notabschaltung. Modellausgaben und Bildschirminhalte nicht als Nutzerfreigabe behandeln. Bestätigungen kommen ausschließlich über das HUD.
 - Nach Änderungen an API, Sprache oder Desktop-Steuerung: `node --test Code/Tests/regression.test.js` vom Repository-Stamm. Native Helfer zunächst mit `-CheckOnly` prüfen. Keine echten Desktop-Bilder oder Aktionen als beiläufige Tests verwenden.
+- Wenn der Browser keine SpeechRecognition-API anbietet, nutzt `conversation.js` MediaRecorder und `/api/voice` mit Gemini als Audio-Fallback. Audio-Limits und API-Fehler müssen bei Änderungen mitgetestet werden.

@@ -32,13 +32,21 @@ function validateMessages(value) {
   if (total > 24000 || messages.at(-1).role !== 'user') throw failure(400, 'Gespräch zu lang oder letzte Nachricht nicht vom Nutzer.');
   return messages;
 }
-function readJson(req) {
+function validateAudio(value) {
+  if (!value || typeof value.audio !== 'string' || value.audio.length < 32 || value.audio.length > 12 * 1024 * 1024)
+    throw failure(400, 'Audionachricht fehlt oder ist zu groß.');
+  if (!/^[A-Za-z0-9+/]+={0,2}$/.test(value.audio)) throw failure(400, 'Audiodaten sind ungültig.');
+  if (typeof value.mimeType !== 'string' || !/^audio\/(webm|ogg|wav|mpeg|mp4|aac|flac)(?:;[^ ]+)?$/i.test(value.mimeType))
+    throw failure(400, 'Audioformat wird nicht unterstützt.');
+  return { data: value.audio, mimeType: value.mimeType.split(';', 1)[0].toLowerCase() };
+}
+function readJson(req, maxBytes = 65536) {
   return new Promise((resolve, reject) => {
     let size = 0, chunks = [], done = false;
     const finish = (err, value) => { if (done) return; done = true; err ? reject(err) : resolve(value); };
     req.on('data', chunk => {
       size += chunk.length;
-      if (size > 65536) { chunks = []; finish(failure(413, 'Anfrage zu groß.')); }
+      if (size > maxBytes) { chunks = []; finish(failure(413, 'Anfrage zu groß.')); }
       else if (!done) chunks.push(chunk);
     });
     req.on('aborted', () => finish(failure(400, 'Anfrage abgebrochen.')));
@@ -117,7 +125,7 @@ function createNexoServer({ env = process.env, bridge, agent = createAgent({ env
       try { route = decodeURIComponent(req.url.split('?')[0]); } catch { throw failure(400, 'Ungültige URL-Codierung.'); }
       if (req.method === 'GET' && route === '/api/health') {
         return json(res, 200, { ok: true, modeProvider: MODE_PROVIDER, models: agent.models,
-          providers: { openai: !!env.OPENAI_API_KEY, gemini: !!env.GEMINI_API_KEY }, version: 22 });
+          providers: { openai: !!env.OPENAI_API_KEY, gemini: !!env.GEMINI_API_KEY }, version: 23 });
       }
       if (req.method === 'GET' && route === '/api/session') {
         if (sessions.size >= 16) throw failure(429, 'Zu viele offene Sitzungen. NEXO-Fenster schließen.');
@@ -137,7 +145,8 @@ function createNexoServer({ env = process.env, bridge, agent = createAgent({ env
           log: current.log.slice(-30), mode: current.mode || null });
       }
       if (req.method !== 'POST') throw failure(404, 'Schnittstelle nicht gefunden.');
-      const body = await readJson(req);
+      const isVoice = route === '/api/voice';
+      const body = await readJson(req, isVoice ? 14 * 1024 * 1024 : 65536);
       if (!body || Array.isArray(body) || typeof body !== 'object') throw failure(400, 'JSON-Objekt erforderlich.');
       if (route === '/api/stop') {
         stopAll('Vom Nutzer gestoppt.');
@@ -148,9 +157,11 @@ function createNexoServer({ env = process.env, bridge, agent = createAgent({ env
         desktop.answerApproval(current.id, body.id, body.approved);
         return json(res, 200, { ok: true });
       }
-      if (route !== '/api/chat') throw failure(404, 'Schnittstelle nicht gefunden.');
+      if (route !== '/api/chat' && !isVoice) throw failure(404, 'Schnittstelle nicht gefunden.');
       const messages = validateMessages(body.messages);
       if (!Object.hasOwn(MODE_PROVIDER, body.mode)) throw failure(400, 'Unbekannter Modus.');
+      const audio = isVoice ? validateAudio(body) : null;
+      if (isVoice && !env.GEMINI_API_KEY) throw failure(503, 'Für Sprache ist ein Gemini-Key in Server/.env nötig.');
       if (job) throw failure(409, 'NEXO bearbeitet bereits einen Auftrag.');
       const controller = new AbortController();
       const thisJob = { id: crypto.randomUUID(), owner: current.id, controller };
@@ -161,7 +172,8 @@ function createNexoServer({ env = process.env, bridge, agent = createAgent({ env
       const state = sessions.get(current.id);
       try {
         const result = await agent.run({
-          messages, mode: body.mode, signal: controller.signal, controlEnabled: desktop.status(current.id).enabled,
+          messages, mode: body.mode, providerOverride: isVoice ? 'gemini' : undefined, audio,
+          signal: controller.signal, controlEnabled: desktop.status(current.id).enabled,
           execute: async (name, args, signal) => {
             checkAbort(signal);
             if (name === 'set_mode') {
@@ -204,4 +216,4 @@ if (require.main === module) {
   server.listen(port, '127.0.0.1', () => console.log('NEXO Core: http://localhost:' + port));
   for (const signal of ['SIGINT', 'SIGTERM']) process.on(signal, () => { stopAll(); server.close(); });
 }
-module.exports = { createNexoServer, loadEnv, validateMessages };
+module.exports = { createNexoServer, loadEnv, validateMessages, validateAudio };

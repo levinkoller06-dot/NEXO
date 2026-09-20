@@ -1,7 +1,7 @@
 // Microphone intent, actual recognition, network work and speech are separate states.
 const conversationHistory = [];
 const SpeechRecognitionImpl = window.SpeechRecognition || window.webkitSpeechRecognition;
-let mic = null, busy = false, cancelSpeech = () => {}, lastModeEvent = null;
+let mic = null, recorder = null, recorderStream = null, recorderChunks = [], busy = false, cancelSpeech = () => {}, lastModeEvent = null;
 function setTalkStatus() {}
 function showError(err) {
   $('state').textContent = String(err.message || err).slice(0, 190);
@@ -47,9 +47,12 @@ const queue = new NexoConversationState.SerialQueue({
   },
   onError: showError,
   async run(text, signal) {
-    addTurn('user', text);
+    const audio = text && typeof text === 'object' && text.kind === 'audio' ? text : null;
+    addTurn('user', audio ? 'Sprachnachricht' : text);
     $('state').textContent = 'NEXO arbeitet …'; setTalkStatus('ARBEITET');
-    const data = await NexoApi.post('/api/chat', { mode, messages: conversationHistory.map(h => ({ ...h })) }, { signal });
+    const payload = { mode, messages: conversationHistory.map(h => ({ ...h })) };
+    if (audio) Object.assign(payload, { audio: audio.data, mimeType: audio.mimeType });
+    const data = await NexoApi.post(audio ? '/api/voice' : '/api/chat', payload, { signal });
     if (signal.aborted) return;
     const modelStatus = document.getElementById('model-status');
     if (modelStatus) modelStatus.textContent = (data.provider === 'gemini' ? 'Gemini' : 'OpenAI') + ' · ' + data.model;
@@ -59,23 +62,25 @@ const queue = new NexoConversationState.SerialQueue({
     if (!signal.aborted) $('state').textContent = mic?.wanted ? 'Ich höre zu.' : 'Ich bin bereit.';
   }
 });
+let microphoneRequest = null;
+function requestMicrophone() {
+  if (!navigator.mediaDevices?.getUserMedia) return Promise.resolve(null);
+  if (!microphoneRequest) microphoneRequest = navigator.mediaDevices.getUserMedia({ audio: true }).finally(() => { microphoneRequest = null; });
+  return microphoneRequest;
+}
+async function ensureMicrophonePermission() {
+  try {
+    const stream = await requestMicrophone();
+    stream?.getTracks().forEach(track => track.stop());
+    return true;
+  } catch (error) {
+    showError(new Error(error.name === 'NotAllowedError' ? 'Mikrofon-Zugriff wurde verweigert.' : 'Mikrofon ist nicht verfügbar.'));
+    return false;
+  }
+}
 if (SpeechRecognitionImpl) {
   const recognition = new SpeechRecognitionImpl();
   recognition.lang = 'de-DE'; recognition.continuous = true; recognition.interimResults = true;
-  let microphoneRequest = null;
-  async function ensureMicrophonePermission() {
-    if (!navigator.mediaDevices?.getUserMedia) return true;
-    if (!microphoneRequest) {
-      microphoneRequest = navigator.mediaDevices.getUserMedia({ audio: true }).then(stream => {
-        for (const track of stream.getTracks()) track.stop();
-        return true;
-      }).catch(error => {
-        showError(new Error(error.name === 'NotAllowedError' ? 'Mikrofon-Zugriff wurde verweigert.' : 'Mikrofon ist nicht verfügbar.'));
-        return false;
-      }).finally(() => { microphoneRequest = null; });
-    }
-    return microphoneRequest;
-  }
   mic = new NexoConversationState.MicController({
     recognition,
     onChange({ wanted, busy: working, actual }) {
@@ -111,9 +116,41 @@ if (SpeechRecognitionImpl) {
     if (!document.hidden && mic.wanted && !busy) mic.schedule();
   });
 } else {
-  $('talk').disabled = true; $('talk').classList.add('muted');
+  const supportedTypes = ['audio/webm;codecs=opus', 'audio/ogg;codecs=opus', 'audio/webm', 'audio/ogg'];
+  const recorderType = supportedTypes.find(type => window.MediaRecorder?.isTypeSupported?.(type)) || '';
+  async function startRecording() {
+    if (busy || recorder) return;
+    let stream;
+    try { stream = await requestMicrophone(); } catch (error) {
+      showError(new Error(error.name === 'NotAllowedError' ? 'Mikrofon-Zugriff wurde verweigert.' : 'Mikrofon ist nicht verfügbar.')); return;
+    }
+    if (!stream || !window.MediaRecorder) { showError(new Error('Spracherkennung ist in diesem Browser nicht verfügbar.')); return; }
+    try { recorder = recorderType ? new MediaRecorder(stream, { mimeType: recorderType }) : new MediaRecorder(stream); }
+    catch { stream.getTracks().forEach(track => track.stop()); showError(new Error('Audioaufnahme konnte nicht gestartet werden.')); return; }
+    recorderStream = stream; recorderChunks = [];
+    recorder.ondataavailable = event => { if (event.data.size) recorderChunks.push(event.data); };
+    recorder.onerror = () => { stopRecording(true); showError(new Error('Audioaufnahme wurde beendet.')); };
+    recorder.onstop = async () => {
+      const current = recorder, chunks = recorderChunks.slice(), mimeType = current?.mimeType || recorderType || 'audio/webm';
+      recorder = null; recorderChunks = []; recorderStream?.getTracks().forEach(track => track.stop()); recorderStream = null;
+      if (!chunks.length) return;
+      const blob = new Blob(chunks, { type: mimeType });
+      const bytes = new Uint8Array(await blob.arrayBuffer()); let binary = '';
+      for (let i = 0; i < bytes.length; i += 0x8000) binary += String.fromCharCode(...bytes.subarray(i, i + 0x8000));
+      queue.push({ kind: 'audio', mimeType: mimeType.split(';', 1)[0], data: btoa(binary) });
+    };
+    recorder.start(); $('talk').classList.add('active'); $('talk').classList.remove('muted'); $('talk').setAttribute('aria-pressed', 'true');
+  }
+  function stopRecording(discard = false) {
+    if (!recorder) return;
+    if (discard) { recorder.onstop = null; recorder.ondataavailable = null; }
+    try { recorder.stop(); } catch { recorder = null; recorderStream?.getTracks().forEach(track => track.stop()); recorderStream = null; }
+    $('talk').classList.remove('active'); $('talk').classList.add('muted'); $('talk').setAttribute('aria-pressed', 'false');
+  }
+  if (window.MediaRecorder && navigator.mediaDevices?.getUserMedia) $('talk').onclick = () => recorder ? stopRecording() : void startRecording();
+  else { $('talk').disabled = true; $('talk').classList.add('muted'); }
 }
-function stopLocally() { mic?.setWanted(false); queue.stop(); cancelSpeech(); $('state').textContent = 'Gestoppt.'; setTalkStatus('AUS'); }
+function stopLocally() { mic?.setWanted(false); if (recorder) { recorder.onstop = null; recorder.ondataavailable = null; try { recorder.stop(); } catch {} recorder = null; } recorderStream?.getTracks().forEach(track => track.stop()); recorderStream = null; queue.stop(); cancelSpeech(); $('state').textContent = 'Gestoppt.'; setTalkStatus('AUS'); }
 window.nexoStop = async () => {
   stopLocally();
   try { await NexoApi.post('/api/stop', {}); } catch (err) { showError(err); }
