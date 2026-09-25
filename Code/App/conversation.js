@@ -168,12 +168,40 @@ window.nexoStop = async () => {
   try { await NexoApi.post('/api/stop', {}); } catch (err) { showError(err); }
 };
 document.addEventListener('keydown', e => { if (e.ctrlKey && e.altKey && e.key === 'F12') { e.preventDefault(); void window.nexoStop(); } });
+// Renders Jev's real click_by_name decisions straight from the tool log the
+// server already keeps (see onTool in server.js) - every field here comes
+// from the actual Jev API response (or the documented no-Jev fallback), never
+// from the conversation model, so nothing here can be a hallucinated summary.
+function renderJevLog(log) {
+  const list = $('jev-list'), empty = $('jev-empty'), count = $('jev-count');
+  if (!list) return;
+  const entries = (log || []).filter(e => e.name === 'click_by_name' && e.result?.jevDecision);
+  count.textContent = String(entries.length);
+  empty.style.display = entries.length ? 'none' : 'block';
+  list.replaceChildren(...entries.slice(-8).reverse().map(e => {
+    const d = e.result.jevDecision;
+    const li = document.createElement('li');
+    const line = document.createElement('div');
+    line.textContent = d.chosen;
+    const badge = document.createElement('b');
+    badge.textContent = d.confidence != null ? Math.round(d.confidence * 100) + '%' : 'Fallback';
+    line.appendChild(badge);
+    const small = document.createElement('small');
+    small.textContent = e.reason;
+    const candidates = document.createElement('small');
+    candidates.className = 'jev-candidates';
+    candidates.textContent = 'Kandidaten: ' + d.candidates.join(', ');
+    li.append(small, line, candidates);
+    return li;
+  }));
+}
 let leaving = false;
 async function poll() {
   if (leaving) return;
   try {
     const data = await NexoApi.get('/api/status');
     if (data.mode && data.mode.id !== lastModeEvent) { lastModeEvent = data.mode.id; window.nexoSetMode(data.mode.name); }
+    renderJevLog(data.log);
   } catch (err) { if (err.status === 401) { stopLocally(); showError(err); return; } }
   setTimeout(poll, 1000);
 }

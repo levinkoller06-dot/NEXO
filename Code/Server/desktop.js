@@ -241,26 +241,31 @@ class DesktopController {
     this.frame = null;
     const first = await this.bridge.clickByName(title, control, false, signal);
     this.assertEnabled(owner, signal);
+    let jevDecision = null;
     if (first?.ambiguous) {
       // Several controls match the requested name - let Jev pick the right
       // one from the closed set instead of silently taking the first hit
       // (the old behaviour, and a real source of wrong clicks). If Jev is
       // unavailable or errors, fall back to that old first-match behaviour
       // rather than failing the whole action.
-      let chosen = first.candidates[0];
+      let chosen = first.candidates[0], confidence = null;
       try {
         const picked = await jev.chooseCandidate(this.jevOptions, {
           state: { fenster: title, gesuchter_name: control, auftrag: raw.reason },
           question: 'Welches dieser Bedienelemente meint der Auftrag am ehesten?',
           options: first.candidates
         }, signal);
-        chosen = picked.choice;
+        chosen = picked.choice; confidence = picked.confidence;
       } catch { /* fall back to first candidate below */ }
+      // Recorded exactly as returned by Jev (or the documented fallback) so
+      // the HUD can show the real decision, never a model's retelling of it.
+      jevDecision = { candidates: first.candidates, chosen, confidence };
       this.assertEnabled(owner, signal);
       await this.bridge.clickByName(title, chosen, true, signal);
       this.assertEnabled(owner, signal);
     }
-    return this.observe(owner, signal);
+    const observed = await this.observe(owner, signal);
+    return jevDecision ? { ...observed, jevDecision } : observed;
   }
 }
 module.exports = { NativeBridge, DesktopController, validateAction, validateLaunch, validateWindowTarget, checkAbort, abortError };

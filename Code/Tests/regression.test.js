@@ -320,8 +320,9 @@ test('click_by_name with several matches asks Jev to pick one, then clicks that 
   const fetchImpl = async () => ({ ok: true, json: async () => ({ answers: { pick: { type: 'choice', choice: 'Play all', confidence: 0.9 } } }) });
   const desktop = new DesktopController({ bridge, jevOptions: { env: { OPENROUTER_API_KEY: 'test-key' }, fetchImpl } });
   await desktop.enable('owner');
-  await desktop.clickByName('owner', { title: 'Spotify', control: 'Play', reason: 'Alles abspielen' });
+  const result = await desktop.clickByName('owner', { title: 'Spotify', control: 'Play', reason: 'Alles abspielen' });
   assert.deepEqual(bridge.calls[1], { clickByName: 'Spotify', control: 'Play all', exact: true });
+  assert.deepEqual(result.jevDecision, { candidates: ['Play', 'Play next', 'Play all'], chosen: 'Play all', confidence: 0.9 });
   desktop.disable();
 });
 test('click_by_name falls back to the first candidate when Jev is unavailable', async () => {
@@ -333,8 +334,9 @@ test('click_by_name falls back to the first candidate when Jev is unavailable', 
   };
   const desktop = new DesktopController({ bridge });
   await desktop.enable('owner');
-  await desktop.clickByName('owner', { title: 'Spotify', control: 'Play', reason: 'Test' });
+  const result = await desktop.clickByName('owner', { title: 'Spotify', control: 'Play', reason: 'Test' });
   assert.deepEqual(bridge.calls[1], { clickByName: 'Spotify', control: 'Play', exact: true });
+  assert.deepEqual(result.jevDecision, { candidates: ['Play', 'Play next'], chosen: 'Play', confidence: null });
   desktop.disable();
 });
 test('validateWindowTarget rejects missing/oversized title, control or reason', () => {
