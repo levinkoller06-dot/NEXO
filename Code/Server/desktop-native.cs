@@ -248,7 +248,11 @@ public static class NexoDesktop {
     // radio/list item) inside a window via UI Automation and activates it
     // directly - for controls a screenshot+coordinate guess struggles to hit
     // reliably (e.g. a small "Lyrics" label), naming it is far more precise.
-    public static void ClickByName(string titleContains, string controlName) {
+    // exact=false (first call): substring match; if more than one element
+    // matches, nothing is clicked yet - the names are returned so the caller
+    // can have Jev (or, without a Jev key, the first match as before) pick
+    // one, then call again with exact=true and that element's exact name.
+    public static string[] ClickByName(string titleContains, string controlName, bool exact) {
         Dpi();CheckStop();
         IntPtr hwnd=FindWindowByTitle(titleContains);
         AutomationElement root=AutomationElement.FromHandle(hwnd);
@@ -261,17 +265,25 @@ public static class NexoDesktop {
             new PropertyCondition(AutomationElement.ControlTypeProperty,ControlType.RadioButton),
             new PropertyCondition(AutomationElement.ControlTypeProperty,ControlType.ListItem));
         string needle=controlName.ToLowerInvariant();
-        AutomationElement match=null;
+        List<AutomationElement> matches=new List<AutomationElement>();
         foreach(AutomationElement el in root.FindAll(TreeScope.Descendants,condition)) {
             CheckStop();
             string name=el.Current.Name??"";
-            if(name.ToLowerInvariant().Contains(needle)){match=el;break;}
+            bool hit=exact?name.Equals(controlName,StringComparison.OrdinalIgnoreCase):name.ToLowerInvariant().Contains(needle);
+            if(hit)matches.Add(el);
         }
-        if(match==null)throw new InvalidOperationException("Kein passendes Bedienelement mit diesem Namen gefunden.");
+        if(matches.Count==0)throw new InvalidOperationException("Kein passendes Bedienelement mit diesem Namen gefunden.");
+        if(matches.Count>1&&!exact) {
+            string[] names=new string[matches.Count];
+            for(int i=0;i<matches.Count;i++)names[i]=matches[i].Current.Name??"";
+            return names;
+        }
+        AutomationElement match=matches[0];
         object pattern;
         if(match.TryGetCurrentPattern(InvokePattern.Pattern,out pattern))((InvokePattern)pattern).Invoke();
         else if(match.TryGetCurrentPattern(SelectionItemPattern.Pattern,out pattern))((SelectionItemPattern)pattern).Select();
         else if(match.TryGetCurrentPattern(TogglePattern.Pattern,out pattern))((TogglePattern)pattern).Toggle();
         else throw new InvalidOperationException("Bedienelement unterstützt keine direkte Aktion.");
+        return null;
     }
 }

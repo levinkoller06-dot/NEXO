@@ -1,8 +1,11 @@
 'use strict';
-// Standalone script to try out TypeSafe AI's "Jev" model via Vercel AI
-// Gateway, completely separate from the main NEXO server. Run with:
+// Standalone script to try out TypeSafe AI's "Jev" model via OpenRouter's
+// Decisions API, completely separate from the main NEXO server. Run with:
 //   node Server/jev-probe.js
-// Reads AI_GATEWAY_API_KEY (and optionally JEV_MODEL) from Server/.env.
+// Reads OPENROUTER_API_KEY (and optionally JEV_MODEL) from Server/.env.
+// Jev is not a chat model - it answers typed Noul/Choice/Score questions
+// about a "state", so this uses OpenRouter's dedicated /api/alpha/decisions
+// endpoint, not the OpenAI-compatible chat completions endpoint.
 const fs = require('fs');
 const path = require('path');
 
@@ -21,16 +24,16 @@ function loadEnv(file, env = process.env) {
 }
 loadEnv(path.join(__dirname, '.env'));
 
-const key = process.env.AI_GATEWAY_API_KEY;
-const model = process.env.JEV_MODEL || 'typesafe-ai/jev';
-if (!key) { console.error('AI_GATEWAY_API_KEY fehlt in Server/.env.'); process.exit(1); }
+const key = process.env.OPENROUTER_API_KEY;
+const model = process.env.JEV_MODEL || 'typesafe/jev-1.13';
+if (!key) { console.error('OPENROUTER_API_KEY fehlt in Server/.env.'); process.exit(1); }
 
-async function call(label, body) {
+async function decide(label, state, questions) {
   console.log('\n=== ' + label + ' ===');
-  const res = await fetch('https://ai-gateway.vercel.sh/v1/chat/completions', {
+  const res = await fetch('https://openrouter.ai/api/alpha/decisions', {
     method: 'POST',
     headers: { Authorization: 'Bearer ' + key, 'Content-Type': 'application/json' },
-    body: JSON.stringify({ model, ...body })
+    body: JSON.stringify({ model, state, questions })
   });
   const text = await res.text();
   console.log('HTTP ' + res.status);
@@ -38,24 +41,23 @@ async function call(label, body) {
 }
 
 async function main() {
-  // 1) Plain chat message - Jev is not a chat model, so this shows what the
-  // gateway does with a generic prompt (likely a fallback/empty/odd reply).
-  await call('Plain chat prompt', { messages: [{ role: 'user', content: 'Hallo, wer bist du?' }] });
-
-  // 2) Jev's real shape (state + typed questions) sent as extra top-level
-  // fields alongside the required OpenAI "messages" field, in case the
-  // gateway passes provider-specific fields through to TypeSafe untouched.
-  await call('TypeSafe-shaped request (state + questions)', {
-    messages: [{ role: 'user', content: 'ignored - see state/questions' }],
-    state: 'Ich möchte Firefox öffnen und dann nach Katzenvideos suchen.',
-    questions: {
+  // A NEXO-flavoured example: given a spoken command, let Jev classify the
+  // intent (choice) and flag whether it needs confirmation (noul) - the kind
+  // of narrow, fast decision it's meant for (see Schritt 031/035).
+  await decide('Intent-Klassifizierung eines NEXO-Sprachauftrags',
+    'Öffne Firefox und suche nach Katzenvideos.',
+    {
       intent: {
         type: 'choice',
         instructions: 'Welche Absicht hat der Nutzer?',
         criteria: { open_app: 'Ein Programm öffnen', search: 'Etwas im Web suchen', other: 'Etwas anderes' }
+      },
+      needs_confirmation: {
+        type: 'noul',
+        instructions: 'Ist das eine folgenreiche Aktion (Kauf, Installation, Systemeinstellung)?',
+        criteria: { true: 'Kauf, Installation oder Systemeinstellung', false: 'Alles andere' }
       }
-    }
-  });
+    });
 }
 
 main().catch(err => { console.error(err); process.exit(1); });

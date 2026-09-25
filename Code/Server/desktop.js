@@ -2,6 +2,7 @@
 const path = require('path');
 const { spawn } = require('child_process');
 const { randomUUID } = require('crypto');
+const jev = require('./jev');
 
 const abortError = () => Object.assign(new Error('Auftrag gestoppt.'), { name: 'AbortError' });
 const checkAbort = signal => { if (signal?.aborted) throw abortError(); };
@@ -117,7 +118,7 @@ class NativeBridge {
   }
   searchWeb(query, signal) { return this.run({ operation: 'searchWeb', query }, signal); }
   focusWindow(title, signal) { return this.run({ operation: 'focusWindow', title }, signal); }
-  clickByName(title, control, signal) { return this.run({ operation: 'clickByName', title, control }, signal); }
+  clickByName(title, control, exact, signal) { return this.run({ operation: 'clickByName', title, control, exact }, signal); }
   watchStop(onStop) {
     return new Promise((resolve, reject) => {
       let child, ready = false, closed = false, buffer = '';
@@ -144,8 +145,8 @@ class NativeBridge {
 }
 
 class DesktopController {
-  constructor({ bridge = new NativeBridge(), now = Date.now, onStop = () => {} } = {}) {
-    this.bridge = bridge; this.now = now; this.onStop = onStop;
+  constructor({ bridge = new NativeBridge(), now = Date.now, onStop = () => {}, jevOptions = {} } = {}) {
+    this.bridge = bridge; this.now = now; this.onStop = onStop; this.jevOptions = jevOptions;
     this.owner = null; this.frame = null; this.lastSeen = 0;
     this.generation = 0;
   }
@@ -238,8 +239,27 @@ class DesktopController {
     this.assertEnabled(owner, signal);
     const { title, control } = validateWindowTarget(raw, ['control']);
     this.frame = null;
-    await this.bridge.clickByName(title, control, signal);
+    const first = await this.bridge.clickByName(title, control, false, signal);
     this.assertEnabled(owner, signal);
+    if (first?.ambiguous) {
+      // Several controls match the requested name - let Jev pick the right
+      // one from the closed set instead of silently taking the first hit
+      // (the old behaviour, and a real source of wrong clicks). If Jev is
+      // unavailable or errors, fall back to that old first-match behaviour
+      // rather than failing the whole action.
+      let chosen = first.candidates[0];
+      try {
+        const picked = await jev.chooseCandidate(this.jevOptions, {
+          state: { fenster: title, gesuchter_name: control, auftrag: raw.reason },
+          question: 'Welches dieser Bedienelemente meint der Auftrag am ehesten?',
+          options: first.candidates
+        }, signal);
+        chosen = picked.choice;
+      } catch { /* fall back to first candidate below */ }
+      this.assertEnabled(owner, signal);
+      await this.bridge.clickByName(title, chosen, true, signal);
+      this.assertEnabled(owner, signal);
+    }
     return this.observe(owner, signal);
   }
 }

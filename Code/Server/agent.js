@@ -60,7 +60,7 @@ const TOOL_DEFS = [
       reason: { type: 'string', description: 'Kurze konkrete Beschreibung von Ziel und Wirkung.' }
     }, required: ['title', 'reason'], additionalProperties: false
   } },
-  { name: 'click_by_name', description: 'Findet ein benanntes Bedienelement (Knopf, Link, Menüpunkt, Tab, Kontrollkästchen, Listeneintrag) in einem Fenster über dessen sichtbaren Namen und aktiviert es direkt, ohne Bildschirmkoordinaten. Liefert danach ein neues Bildschirmbild.', parameters: {
+  { name: 'click_by_name', description: 'Findet ein benanntes Bedienelement (Knopf, Link, Menüpunkt, Tab, Kontrollkästchen, Listeneintrag) in einem Fenster über dessen sichtbaren Namen und aktiviert es direkt, ohne Bildschirmkoordinaten. Bei mehreren gleich/ähnlich benannten Treffern wählt Jev automatisch den passendsten aus. Liefert danach ein neues Bildschirmbild.', parameters: {
     type: 'object', properties: {
       title: { type: 'string', description: 'Teil des Fenstertitels, in dem gesucht wird.' },
       control: { type: 'string', description: 'Sichtbarer Name/Beschriftung des Bedienelements, z.B. "Lyrics".' },

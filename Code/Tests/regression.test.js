@@ -20,7 +20,7 @@ function fakeBridge() {
     async launchApp(query) { calls.push({ launchApp: query }); return { ok: true }; },
     async searchWeb(query) { calls.push({ searchWeb: query }); return { ok: true }; },
     async focusWindow(title) { calls.push({ focusWindow: title }); return { ok: true }; },
-    async clickByName(title, control) { calls.push({ clickByName: title, control }); return { ok: true }; }
+    async clickByName(title, control, exact) { calls.push({ clickByName: title, control, exact }); return { ok: true }; }
   };
 }
 async function fixture(t, run = async () => ({ reply: 'Test', toolLog: [] }), { env = {}, fetchImpl } = {}) {
@@ -303,12 +303,39 @@ test('click_by_name activates a named control via the bridge and the server disp
   const bridge = fakeBridge(), desktop = new DesktopController({ bridge });
   await desktop.enable('owner');
   const result = await desktop.clickByName('owner', { title: 'Spotify', control: 'Lyrics', reason: 'Lyrics oeffnen' });
-  assert.deepEqual(bridge.calls[0], { clickByName: 'Spotify', control: 'Lyrics' });
+  assert.deepEqual(bridge.calls[0], { clickByName: 'Spotify', control: 'Lyrics', exact: false });
   assert.ok(result.frameId);
   desktop.disable();
   const f = await fixture(t, async ({ execute, signal }) => ({ reply: await execute('click_by_name', { title: 'Spotify', control: 'Lyrics', reason: 'Test' }, signal) }));
   assert.equal((await f.post('/api/chat', requestBody)).status, 200);
-  assert.deepEqual(f.bridge.calls.find(c => typeof c === 'object' && c.clickByName), { clickByName: 'Spotify', control: 'Lyrics' });
+  assert.deepEqual(f.bridge.calls.find(c => typeof c === 'object' && c.clickByName), { clickByName: 'Spotify', control: 'Lyrics', exact: false });
+});
+test('click_by_name with several matches asks Jev to pick one, then clicks that exact name', async () => {
+  const bridge = fakeBridge();
+  bridge.clickByName = async (title, control, exact) => {
+    bridge.calls.push({ clickByName: title, control, exact });
+    if (!exact) return { ok: true, ambiguous: true, candidates: ['Play', 'Play next', 'Play all'] };
+    return { ok: true };
+  };
+  const fetchImpl = async () => ({ ok: true, json: async () => ({ answers: { pick: { type: 'choice', choice: 'Play all', confidence: 0.9 } } }) });
+  const desktop = new DesktopController({ bridge, jevOptions: { env: { OPENROUTER_API_KEY: 'test-key' }, fetchImpl } });
+  await desktop.enable('owner');
+  await desktop.clickByName('owner', { title: 'Spotify', control: 'Play', reason: 'Alles abspielen' });
+  assert.deepEqual(bridge.calls[1], { clickByName: 'Spotify', control: 'Play all', exact: true });
+  desktop.disable();
+});
+test('click_by_name falls back to the first candidate when Jev is unavailable', async () => {
+  const bridge = fakeBridge();
+  bridge.clickByName = async (title, control, exact) => {
+    bridge.calls.push({ clickByName: title, control, exact });
+    if (!exact) return { ok: true, ambiguous: true, candidates: ['Play', 'Play next'] };
+    return { ok: true };
+  };
+  const desktop = new DesktopController({ bridge });
+  await desktop.enable('owner');
+  await desktop.clickByName('owner', { title: 'Spotify', control: 'Play', reason: 'Test' });
+  assert.deepEqual(bridge.calls[1], { clickByName: 'Spotify', control: 'Play', exact: true });
+  desktop.disable();
 });
 test('validateWindowTarget rejects missing/oversized title, control or reason', () => {
   assert.throws(() => validateWindowTarget({ reason: 'Test' }));

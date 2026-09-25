@@ -30,8 +30,9 @@ try {
             [NexoDesktop]::FocusWindow($request.title)
             @{ok=$true} | ConvertTo-Json -Compress
         } elseif ($request.operation -eq 'clickByName') {
-            [NexoDesktop]::ClickByName($request.title, $request.control)
-            @{ok=$true} | ConvertTo-Json -Compress
+            $candidates = [NexoDesktop]::ClickByName($request.title, $request.control, [bool]$request.exact)
+            if ($candidates -and $candidates.Length -gt 0) { @{ok=$true; ambiguous=$true; candidates=$candidates} | ConvertTo-Json -Compress }
+            else { @{ok=$true} | ConvertTo-Json -Compress }
         } elseif ($request.operation -eq 'release') {
             [NexoDesktop]::Release()
             @{ok=$true} | ConvertTo-Json -Compress
