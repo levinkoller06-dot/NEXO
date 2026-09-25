@@ -1,8 +1,22 @@
 const { test } = require('node:test');
 const assert = require('node:assert/strict');
 const Player = require('../App/speech-player');
+const LivePlayer = require('../App/live-audio-player');
 const { createAgent, synthesizeSpeech } = require('../Server/agent');
 const tick = () => new Promise(resolve => setImmediate(resolve));
+function liveFixture(idleMs) {
+  const changes = []; let amplitude = 0; const sources = [];
+  const context = {
+    state: 'running', destination: {}, currentTime: 0,
+    async resume() {},
+    createBuffer(_channels, length, rate) { return { duration: length / rate, getChannelData: () => new Float32Array(length) }; },
+    createBufferSource() { const source = { connect() {}, start(at) { source.startedAt = at; }, stop() {}, onended: null }; sources.push(source); return source; },
+    createAnalyser() { return { fftSize: 256, connect() {}, getFloatTimeDomainData(a) { a.fill(amplitude); } }; }
+  };
+  return { context, sources, changes, setAmplitude(v) { amplitude = v; },
+    player: new LivePlayer({ createContext: () => context, idleMs, onSpeaking: v => changes.push(v) }) };
+}
+function pcm(frameCount) { return new Int16Array(frameCount).buffer; }
 function audioFixture() {
   const changes = []; let amplitude = 0, source;
   const context = {
@@ -27,6 +41,33 @@ test('mouth follows playback samples and closes on silence, end and abort', asyn
   controller.abort(); await second;
   assert.deepEqual(f.changes, [true, false, true, false]);
   assert.equal(f.player.level(), 0);
+});
+test('NexoLivePlayer schedules chunks back-to-back and reports speaking once', async () => {
+  const f = liveFixture();
+  await f.player.push(pcm(24000)); // 1s of audio at 24kHz
+  await f.player.push(pcm(12000)); // 0.5s more, should start exactly when the first ends
+  assert.equal(f.sources[0].startedAt, 0);
+  assert.equal(f.sources[1].startedAt, 1);
+  assert.deepEqual(f.changes, [true]);
+});
+test('NexoLivePlayer.stop() discards everything scheduled and reports speaking false (barge-in)', async () => {
+  const f = liveFixture();
+  await f.player.push(pcm(24000));
+  let stopped = false; f.sources[0].stop = () => { stopped = true; };
+  f.player.stop();
+  assert.equal(stopped, true);
+  assert.deepEqual(f.changes, [true, false]);
+  // A fresh reply right after an interruption starts immediately, not queued
+  // behind the discarded audio's original schedule.
+  await f.player.push(pcm(100));
+  assert.equal(f.sources[1].startedAt, 0);
+});
+test('NexoLivePlayer goes idle shortly after the last chunk finishes with nothing new arriving', async () => {
+  const f = liveFixture(5);
+  await f.player.push(pcm(100));
+  f.sources[0].onended();
+  await new Promise(resolve => setTimeout(resolve, 20));
+  assert.deepEqual(f.changes, [true, false]);
 });
 test('invalid audio fails without pretending to speak', async () => {
   const f = audioFixture(); f.context.decodeAudioData = async () => { throw Error('invalid audio'); };

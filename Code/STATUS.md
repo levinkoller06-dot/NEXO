@@ -1,13 +1,13 @@
 # NEXO – aktueller Projektstand
 
-Stand: 20.09.2026 · Schritt 030
+Stand: 25.09.2026 · Schritt 037
 
 ## Aktueller Auftrag und Ergebnis
-Schritt 030 vergleicht Karens direkten App-Start mit NEXO und ersetzt den Windows-Suchweg durch installierte EXE-Dateien, exakte Startmenü-Verknüpfungen oder App-IDs. Reine bekannte Startaufträge wie „Öffne Spotify“ laufen ohne Modellaufruf, Screenshot, Maus oder Tastatur. Für kombinierte Aufträge bleibt die KI-Werkzeugschleife zuständig; der Prompt verlangt den direkten Startweg. Das ist keine technische Garantie gegen jeden möglichen Fehlplan eines Modells bei komplexen Aufträgen.
+Schritt 037 schaltet den Browser endlich auf die schon länger server-seitig fertige Gemini-Live-Verbindung um (Phase C des Umbaus, siehe `C:\Users\levin\.claude\plans\vectorized-purring-swing.md`): Mikrofon streamt jetzt durchgehend als 16kHz-PCM über `/ws/voice`, Antwort-Audio kommt in Echtzeit-Häppchen zurück und wird lückenlos abgespielt, Unterbrechen ist ein serverseitig erkanntes `interrupted`-Ereignis von Gemini selbst statt eines client-seitigen Rateversuchs über eine zweite Spracherkennung. Grund: die alte Browser-Spracherkennung erkannte Unterbrechungen unzuverlässig, und das Modell behauptete gelegentlich einen Erfolg (z.B. "Wiedergabe läuft"), ohne das im Screenshot wirklich zu bestätigen – Letzteres ist jetzt im Systemprompt ausdrücklich verboten. Zusätzlich muss das Modell für jedes benannte Bedienelement zuerst `click_by_name` versuchen statt Koordinaten zu raten.
 
-Sprachausgabe bleibt ausschließlich Gemini mit der konfigurierten Stimme (lokal Charon); Browserstimmen-Fallback entfernt. Ein Audiopaket pro Antwort vermeidet zusätzliche Satz-Anfragen. Bei Ausfall erscheint ein Fehler statt einer anderen Stimme. Die Mundöffnung folgt der Audioenergie aus demselben Web-Audio-Signal wie die Lautsprecherausgabe und schließt bei Ende/Abbruch. Das ist Lautstärke-Synchronisierung, keine Phonem-/Lippenform-Erkennung.
+Sprachausgabe läuft jetzt über die Live-Verbindung (Gemini erzeugt Audio direkt im Gespräch, kein separater `/api/speech`-Aufruf mehr für den Live-Pfad; der alte HTTP-Pfad bleibt im Code, wird aber vom Browser nicht mehr angesprochen). Die Mundöffnung folgt weiterhin der Audioenergie, jetzt aus dem Live-Audio-Player statt dem alten Blob-Player.
 
-Geprüft: 61 automatisierte Tests, native Kompilierung, Spotify-Pfadauflösung auf diesem PC ohne Start. Echte Spracherkennung, hörbare Wiedergabe und sichtbare Lippensynchronität sind noch nicht im Benutzer-HUD abgenommen. Server/Starter Version 32; nach Neustart wirksam.
+Geprüft: 66 automatisierte Tests. **Nicht getestet: der komplette neue Browser-Audio-Pfad (Mikrofon-Streaming, Wiedergabe, Unterbrechen) auf echtem Gerät** – das kann nur der Nutzer selbst beurteilen, es gibt kein echtes Mikrofon/keine echten Lautsprecher in der Entwicklungsumgebung.
 
 ## Implementiert
 - Startbares Windows-HUD mit dem bestehenden Kopf aus 99.220 3D-Modell-Partikeln, Farbwechsel, Großansicht, Timer und Browsernotizen.
@@ -21,12 +21,15 @@ Geprüft: 61 automatisierte Tests, native Kompilierung, Spotify-Pfadauflösung a
 - `search_web`: öffnet eine Google-Suche direkt per URL im Standardbrowser (`Process.Start`), ohne Adressleiste/Suchfeld zu suchen oder anzuklicken.
 - `focus_window`: holt ein bestimmtes offenes Fenster per (Teil-)Titel gezielt nach vorne (`SetForegroundWindow`), statt blind ALT+TAB zu drücken, das nur zum nächsten Fenster wechselt.
 - `click_by_name`: findet ein benanntes Bedienelement (Button/Link/Menüpunkt/Tab/Checkbox/Radio/Listeneintrag) per UI-Automation-Namenssuche in einem Fenster und aktiviert es direkt, ohne Bildschirmkoordinaten zu schätzen. Seit Schritt 035: bei mehreren gleich/ähnlich benannten Treffern entscheidet Jev (TypeSafe, über OpenRouter) per Choice-Frage, welcher gemeint ist, statt stillschweigend den ersten Treffer zu nehmen; ohne Jev-Zugang oder bei Fehlern automatischer Rückfall auf den ersten Treffer (altes Verhalten).
-- `Code/Server/live.js` (neu): baut die Gemini-Live-Setup-Nachricht (Systemprompt, Werkzeuge, Stimme), hält die WebSocket-Verbindung zu Gemini, leitet Werkzeugaufrufe an dieselben Desktop-Funktionen weiter wie der bisherige HTTP-Pfad, injiziert Bildschirmfotos als eigene Inhalts-Turns (nicht als Werkzeugantwort – die sieht das Modell sonst gar nicht). Noch nicht an den Browser angebunden.
-- `Code/Server/server.js`: neuer `/ws/voice`-WebSocket-Endpunkt (Paket `ws`, erste Abhängigkeit des Projekts), authentifiziert über das Sitzungscookie (ein WebSocket-Handshake kann keinen eigenen Token-Header senden).
+- `Code/Server/live.js`: baut die Gemini-Live-Setup-Nachricht (Systemprompt, Werkzeuge, Stimme), hält die WebSocket-Verbindung zu Gemini, leitet Werkzeugaufrufe an dieselben Desktop-Funktionen weiter wie der bisherige HTTP-Pfad, injiziert Bildschirmfotos als eigene Inhalts-Turns (nicht als Werkzeugantwort – die sieht das Modell sonst gar nicht).
+- `Code/Server/server.js`: `/ws/voice`-WebSocket-Endpunkt (Paket `ws`), authentifiziert über das Sitzungscookie (ein WebSocket-Handshake kann keinen eigenen Token-Header senden). Seit Schritt 037 vom Browser tatsächlich genutzt.
+- `Code/App/audio-worklet.js` (neu, Schritt 037): `AudioWorkletProcessor`, der Mikrofon-Samples auf 16kHz/16-bit-PCM herunterrechnet und in ~20ms-Häppchen an den Hauptthread postet.
+- `Code/App/live-audio-player.js` (neu, Schritt 037): spielt eingehende 24kHz-PCM-Häppchen lückenlos hintereinander ab (`AudioBufferSourceNode`-Kette mit exaktem Anschluss-Timing), `stop()` verwirft bei Unterbrechung sofort alles Geplante. Analyser-basierte `level()`-Methode wie beim alten `speech-player.js`, damit die Mundanimation unverändert bleibt.
+- `Code/App/conversation.js`: nutzt jetzt `/ws/voice` durchgehend, sobald das Mikrofon an ist – kein `SpeechRecognition`/`MediaRecorder`, kein `/api/chat`/`/api/speech` mehr im aktiven Pfad. `Code/App/conversation-state.js` und `Code/App/speech-player.js` sind dadurch unbenutzt, aber (noch) nicht gelöscht (bewusst aufgeschoben, siehe Phase D im Plan).
 - `launch_app`: direkter Windows-Start über apps.ps1. Kein Suchmenü, kein Enter, keine Mausklicks; Erfolg bedeutet nur übergebener Startauftrag. Unbekannte/mehrdeutige Apps liefern Fehler.
 - `web_answer` (neu, Schritt 029): beantwortet Wissens-/Nachrichtenfragen über Geminis eingebautes `google_search`-Grounding mit einer kurzen Textantwort zum Vorlesen – öffnet nichts, im Unterschied zu `search_web`. Läuft als eigener, direkter Gemini-Aufruf (kann nicht mit eigenen Werkzeugdefinitionen in derselben Anfrage kombiniert werden) und ist unabhängig von aktivierter PC-Steuerung immer verfügbar. Live gegen die echte API getestet.
 - Gemini-Denkbudget: 0 (aus), bis in der laufenden Anfrage tatsächlich ein Bildschirm-/Klick-Werkzeug benutzt wurde (`computer_observe`, `computer_action`, `click_by_name`, `focus_window`); erst danach schaltet die Runde auf -1 (dynamisch) um. Reiner Chat und einzelne deterministische Werkzeuge (`launch_app`, `set_mode`, `web_answer`) bleiben dadurch durchgehend schnell (Schritt 032).
-- Mikrofon bleibt während der Sprachausgabe aktiv (nur während der Denkphase stumm); erkennt die Spracherkennung währenddessen einen Satz, bricht die aktuelle Antwort sofort ab (Barge-in) statt sich hinten anzustellen.
+- Mikrofon streamt seit Schritt 037 durchgehend, solange es an ist – keine eigene Denkphasen-Stummschaltung mehr nötig, weil Gemini Live selbst erkennt, wenn der Nutzer währenddessen redet, und ein `interrupted`-Ereignis schickt; der Browser bricht die laufende Wiedergabe darauf sofort ab. Vorher (Schritt 027) lief das über eine zweite, client-seitige Spracherkennung während der Wiedergabe – laut Nutzer unzuverlässig, jetzt ersetzt.
 - Windows-Helfer über feste lokale PowerShell/C#-Dateien, JSON über stdin statt Shell-Interpolation. Startfehler, Zeitlimits und Abbruch werden behandelt.
 - Geschützte lokale API mit Host-/Origin-/Inhaltstypprüfung, Sitzungscookie, Sitzungstoken, Nachrichten-/Body-Limits und Pfadbegrenzung. Fehlerhafte URL-Codierung liefert 400.
 - PC-Steuerung wird bei jeder neuen Sitzung automatisch aktiviert. Globale Stopp-Taste Strg+Alt+F12 und Verbindungsüberwachung bleiben als unsichtbare Notabschaltung erhalten.
@@ -35,10 +38,10 @@ Geprüft: 61 automatisierte Tests, native Kompilierung, Spotify-Pfadauflösung a
 - Starter wartet auf den Server, berücksichtigt PORT und zeigt Fehler an. Ältere Server werden nur bei eindeutig zum Projekt gehörendem Prozesspfad ersetzt.
 
 ## Grenzen
-- Die Gemini-Live-Verbindung (`live.js`) ist server-seitig fertig und getestet, aber der Browser spricht noch nicht damit – kein hörbarer/spürbarer Unterschied im HUD durch diesen Schritt allein. Das folgt mit der Browser-Seite (Mikrofon-Dauerstream, Wiedergabe).
+- **Der komplette Browser-Audio-Pfad aus Schritt 037 (Mikrofon-Streaming, Wiedergabe, Unterbrechen) ist ungetestet auf echtem Gerät** – es gibt kein echtes Mikrofon/keine echten Lautsprecher in der Entwicklungsumgebung. Die Bausteine sind einzeln mit Fake-Objekten getestet (66 Tests), aber ob es im echten Edge-Fenster tatsächlich funktioniert, weiß nur der Nutzer nach dem ersten echten Versuch.
+- Ob Barge-in bei Lautsprecher- (statt Kopfhörer-)Nutzung zuverlässig funktioniert, hängt jetzt von Geminis eigener Echo-/VAD-Erkennung ab, nicht mehr von NEXOs eigenem Code – laut Referenzprojekt "Karen" serverseitig gelöst, aber auf dem echten Gerät zu bestätigen.
 - Ein erster Desktop-Agent, keine Garantie, dass jede beliebige Oberfläche korrekt erkannt/bedient wird.
 - `pointer=background` (UI Automation, sonst Fensternachrichten statt echter Maus) funktioniert nicht bei allen Programmen zuverlässig (z.B. Spiele, Canvas-/GPU-gerenderte Oberflächen, manche UWP-Apps, die echte Hardware-Eingaben verlangen). Das Modell soll bei ausbleibender Wirkung mit `pointer=visible` erneut versuchen; automatische Erkennung von Fehlschlägen gibt es nicht.
-- Barge-in nutzt dieselbe Spracherkennung wie sonst auch, ohne eigene Echo-Unterdrückung; ob NEXOs eigene Stimme aus dem Lautsprecher (statt Kopfhörer) sich gelegentlich selbst triggert, hängt von Chromiums eingebauter Echo-Unterdrückung ab und ist ungetestet.
 - `launch_app` verlässt sich darauf, dass das Modell den Suchtreffer korrekt visuell einschätzt, bevor es ENTER drückt; eine falsche Einschätzung kann weiterhin das falsche Programm öffnen.
 - Die Risikoeinstufung beliebiger visueller Aktionen hängt vom Modell ab. Die Bestätigungslogik ist keine vollständige Sandbox. Seit Schritt 032 laufen Löschen, Schließen von Programmen (auch mit möglichem Datenverlust), Absenden von Nachrichten/Formularen und Uploads ausdrücklich OHNE Bestätigung – das ist eine bewusste Nutzerentscheidung, kein technisches Sicherheitsnetz.
 - Kein echter Desktop-/Mikrofon-/Hotkey-End-to-End-Test in Schritt 021; native Kompilierung, Logik und API-Protokoll wurden geprüft.
@@ -61,17 +64,17 @@ Geprüft: 61 automatisierte Tests, native Kompilierung, Spotify-Pfadauflösung a
 
 ## Orientierung
 Pfade ab Repository-Stamm:
-- Code/App/: HUD, api.js, conversation-state.js, conversation.js.
-- Code/Server/server.js: HTTP/Sitzungen, Stopp, Aufträge, neuer `/ws/voice`-Upgrade-Handler.
-- Code/Server/agent.js: Anbieter, Werkzeugschleife, TOOL_DEFS/SYSTEM_PROMPT (von live.js wiederverwendet).
-- Code/Server/live.js: Gemini-Live-Verbindung und Werkzeugaufruf-Weiterleitung (neu, noch nicht an den Browser angebunden).
+- Code/App/: HUD; `conversation.js` führt jetzt die Live-Verbindung (`/ws/voice`), `audio-worklet.js`+`live-audio-player.js` sind neu dafür. `conversation-state.js`/`speech-player.js` sind unbenutzt, aber noch nicht entfernt (Phase D).
+- Code/Server/server.js: HTTP/Sitzungen, Stopp, Aufträge, `/ws/voice`-Upgrade-Handler.
+- Code/Server/agent.js: Anbieter, Werkzeugschleife, TOOL_DEFS/SYSTEM_PROMPT (von live.js wiederverwendet), `synthesizeSpeech` (nur noch vom alten, jetzt unbenutzten HTTP-Pfad gebraucht).
+- Code/Server/live.js: Gemini-Live-Verbindung und Werkzeugaufruf-Weiterleitung, seit Schritt 037 vom Browser genutzt.
+- Code/Server/jev.js: TypeSafe/Jev über OpenRouter, aktuell nur für `click_by_name`-Mehrdeutigkeit genutzt.
 - Code/Server/desktop.js, desktop.ps1, desktop-native.cs: Windows-Steuerung.
 - Code/Server/launch.ps1: Start und Versionsprüfung.
-- Code/Server/package.json: erste Abhängigkeit (`ws`) – `npm install` im Server-Ordner nötig.
-- Code/Tests/regression.test.js: Tests ohne echte Desktop-Aktionen.
-- Planung/NEXO-Obsidian-Plan/Schritte/029 2026-09-20 web_answer und Prompt-Verschaerfung.md: vollständige Übergabe.
+- Code/Tests/regression.test.js, speech-launch.test.js: Testsuiten (66 Tests gesamt).
+- Planung/NEXO-Obsidian-Plan/Schritte/037 2026-09-25 *.md: vollständige Übergabe dieses Schritts.
 - Planung/NEXO-Obsidian-Plan/NEXO Planung und Ziel.md: langfristiges Ziel.
-- Plan-Datei: C:\Users\levin\.claude\plans\vectorized-purring-swing.md (vollständiger Phasenplan A–D für den Live-API-Umbau).
+- Plan-Datei: C:\Users\levin\.claude\plans\vectorized-purring-swing.md (vollständiger Phasenplan A–D für den Live-API-Umbau; A–C jetzt umgesetzt, D steht noch aus).
 
 ## Als Nächstes
-Phase C des Live-API-Umbaus (Browser-Mikrofon-Dauerstream, Wiedergabe) ist der eigentliche Geschwindigkeits-Hebel und steht noch aus – nur mit dem Nutzer am echten Gerät testbar. Bis dahin: NEXO neu starten (Serverversion 31), "sag mir die News" / ähnliche Wissensfragen testen (sollte jetzt antworten statt einen Tab zu öffnen), sowie beobachten, ob Programme jetzt zuverlässiger über launch_app statt Mausklick öffnen und ob weiterhin ungefragte Zusatzprogramme aufgehen. "Energie" schlägt ohne neues OpenAI-Guthaben weiterhin fehl.
+NEXO neu starten und den kompletten neuen Audio-Pfad real testen: sprechen, während NEXO redet (sollte sofort abbrechen statt weiterzureden oder gar nicht zu reagieren), auf Verzögerung/Aussetzer/Robotik in der Stimme achten. Je nachdem was dabei rauskommt, sofort mit konkretem Fehlerbild zurückmelden statt "geht nicht" – z.B. "kein Ton", "Ton aber kein Abbrechen möglich", "abgehackt am Anfang jeder Antwort". Danach: Phase D (alten HTTP-Sprachpfad und unbenutzte Dateien aufräumen), bzw. Jev auf weitere Klick-Stellen (Browser-DOM) ausweiten. "Energie" schlägt ohne neues OpenAI-Guthaben weiterhin fehl (betrifft den Live-Pfad nicht, der läuft ausschließlich über Gemini).

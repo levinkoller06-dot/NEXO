@@ -466,7 +466,7 @@ test('HUD references existing elements and loads helpers before conversation', (
   }
   const scripts = [...html.matchAll(/<script src="([^"]+)"/g)].map(m => m[1]);
   for (const name of scripts) assert.ok(fs.existsSync(path.join(dir, name)), name);
-  for (const name of ['app.js', 'api.js', 'conversation-state.js']) assert.ok(scripts.indexOf(name) < scripts.indexOf('conversation.js'));
+  for (const name of ['app.js', 'api.js', 'live-audio-player.js']) assert.ok(scripts.indexOf(name) >= 0 && scripts.indexOf(name) < scripts.indexOf('conversation.js'));
 });
 test('HUD omits obsolete conversation, PC-control and status copy', () => {
   const fs = require('fs'), path = require('path');
