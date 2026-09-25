@@ -1,6 +1,6 @@
 # Aktueller Stand – NEXO
 
-Stand: 20.09.2026 · Schritt 030
+Stand: 25.09.2026 · Schritt 031
 
 ## Funktioniert
 HUD mit 99.220 Punkten aus einem 3D-Kopfmodell, Mausverfolgung (immer aktiv, ohne Ausschalter), Blinzeln, Mundanimation während Sprachausgabe, Farb-/Partikelübergängen, Großansicht, Browsernotiz und Fokus-Timer. Lokaler Node-Server mit Cloud-Anbietern: Fokus/Bereit → Gemini (ohne Thinking im reinen Chat, dynamisches Denken bei PC-Steuerung), Energie → OpenAI. Das bisherige Gespräch (Browser-Spracherkennung, Barge-in, Gemini-Sprachausgabe über `/api/speech`) läuft über den HTTP-Pfad; seit Schritt 030 ausschließlich mit Gemini-Stimme und audioabhängiger Mundöffnung. Zusätzlich existiert jetzt eine server-seitige Gemini-**Live**-Verbindung (`Code/Server/live.js`, `/ws/voice`) für eine geplante Dauerverbindungs-Architektur wie im Referenzprojekt "Karen" – live gegen die echte API validiert, aber noch nicht an den Browser angebunden. NEXO aktiviert die allgemeine Desktopsteuerung automatisch für die aktive Sitzung und plant Bildschirm-, Maus- und Tastaturaktionen; Klicks laufen standardmäßig unsichtbar über UI Automation, sonst Fensternachricht, sonst echte Maus (`pointer=visible`); `launch_app` startet installierte Programme direkt ohne Maus oder Windows-Suche, `search_web` öffnet eine Google-Suche direkt, `focus_window` holt ein Fenster gezielt per Titel nach vorne, `click_by_name` trifft benannte Bedienelemente ohne Koordinaten. Sensible Aktionen benötigen Bestätigung; Strg+Alt+F12 bleibt als unsichtbare Notabschaltung.
@@ -12,10 +12,10 @@ HUD mit 99.220 Punkten aus einem 3D-Kopfmodell, Mausverfolgung (immer aktiv, ohn
 In der Cloud betriebener NEXO-Core, Anmeldung, dauerhafte Erinnerung, freie Anbieter-/Modellwahl, Kamera-Verfolgung, Kalender, Handy-App, Push und Telefonie. Die Notizfunktion schreibt noch nicht automatisch nach Obsidian. Echte Desktop-, Mikrofon- und globaler-Hotkey-Tests auf dem Benutzer-PC stehen noch aus.
 
 ## Beschlossen
-Cloud-KI bei lokal laufender Oberfläche und lokalem Server. OpenAI/Gemini sind angebunden; ein allgemeiner Modell-Router mit gemeinsamem dauerhaftem Kontext bleibt Ziel. Neue Umsetzung nur auf Auftrag.
+Cloud-KI bei lokal laufender Oberfläche und lokalem Server. OpenAI/Gemini sind angebunden; ein allgemeiner Modell-Router mit gemeinsamem dauerhaftem Kontext bleibt Ziel. Neue Umsetzung nur auf Auftrag. Architektur für TypeSafe AI ("Jev") festgelegt, aber aufgeschoben: Jev soll künftig nur Klick-/Navigationsentscheidungen über bereits bekannte, benannte Kandidaten treffen (UI-Automation-/Browser-Accessibility-Baum), Gemini bleibt für Sprache und alles Freie (Tippen, Kalendereinträge) zuständig. TypeSafe-Signups sind aktuell pausiert. Siehe [[031 2026-09-25 Jev-Architektur, Fokus-Fix bestaetigt, naechste Schritte]].
 
 ## Aktuelle Prüfung
-61 Tests bestanden; nativer Helfer kompiliert; Spotify auf diesem PC direkt gefunden. Hörbare Wiedergabe und Mundbewegung im echten HUD noch nicht abgenommen. Siehe [[030 2026-09-20 Direkter Appstart und Gemini Audio]].
+61 Tests bestanden; nativer Helfer kompiliert; Spotify auf diesem PC direkt gefunden. Hörbare Wiedergabe und Mundbewegung im echten HUD noch nicht abgenommen. Siehe [[030 2026-09-20 Direkter Appstart und Gemini Audio]]. Der früher gemeldete Fokus-Bug ("Programm verschwindet in den Hintergrund") ist seit Schritt 028 durch `focus_window` behoben, aber noch nicht auf echten Programmen abgenommen.
 
 ## Schrittprotokoll
 - [[001 2026-09-19 HUD-Prototyp]]
@@ -47,6 +47,8 @@ Cloud-KI bei lokal laufender Oberfläche und lokalem Server. OpenAI/Gemini sind 
 - [[027 2026-09-20 Karen-Techniken - UIA-Klicks, Websuche, Barge-in]]
 - [[028 2026-09-20 Live-API Phase A und B]]
 - [[029 2026-09-20 web_answer und Prompt-Verschaerfung]]
+- [[030 2026-09-20 Direkter Appstart und Gemini Audio]]
+- [[031 2026-09-25 Jev-Architektur, Fokus-Fix bestaetigt, naechste Schritte]]
 
 Nach jedem abgeschlossenen Arbeits- oder Planungsschritt entsteht hier eine neue nummerierte Notiz im Ordner `Schritte`. Code und Notiz werden gemeinsam auf GitHub gesichert.
 
