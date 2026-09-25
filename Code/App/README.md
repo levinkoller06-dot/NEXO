@@ -36,7 +36,7 @@ Bildschirmbilder gehen bei einer durch die KI angeforderten Beobachtung an den a
 - **Strg + Alt + F12** beendet den Auftrag und entzieht die PC-Steuerung. Der sichtbare Stopp-Knopf wurde aus der Oberfläche entfernt.
 - Schließen oder Verbindungsverlust des HUD beendet die Steuerung spätestens nach Ablauf des 15-Sekunden-Verbindungschecks; eine direkt erkannte Trennung stoppt sofort.
 - Die PC-Steuerung startet automatisch mit jeder neuen HUD-Sitzung.
-- Folgenreiche Aktionen werden von der KI als sensitive markiert und im HUD als konkreter Schritt mit Vorschau vorgelegt. Delete und Alt+F4 erzwingen zusätzlich eine Bestätigung im Code. Nach Freigabe muss NEXO den Bildschirm erneut ansehen.
+- Folgenreiche Aktionen (Käufe/Zahlungen, Installationen, Systemeinstellungen) werden von der KI als sensitive markiert; seit Schritt 033 fragt NEXO dafür ausdrücklich per gesprochener Antwort nach ("Soll ich ... ? Antworte mit ja oder nein.") statt eine HUD-Bestätigung anzuzeigen. Delete/Alt+F4 lösen das nicht mehr automatisch aus.
 - Die Einordnung beliebiger visueller Aktionen hängt weiterhin vom Modell ab. Das ist keine vollständige technische Erkennung aller riskanten Klicks.
 - Der Windows-Helfer blockiert Eingaben auf NEXOs eigenen Fenstern, um Selbstbestätigungen zu verhindern. Betriebssystemrechte und Administratorabfragen werden nicht umgangen.
 - Pro Auftrag höchstens 24 Modellrunden/40 Werkzeugaufrufe und vier Minuten Laufzeit. Kein unbegrenzter Hintergrundagent.

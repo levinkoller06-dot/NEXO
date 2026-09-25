@@ -168,31 +168,12 @@ window.nexoStop = async () => {
   try { await NexoApi.post('/api/stop', {}); } catch (err) { showError(err); }
 };
 document.addEventListener('keydown', e => { if (e.ctrlKey && e.altKey && e.key === 'F12') { e.preventDefault(); void window.nexoStop(); } });
-let approvalId = null, leaving = false;
-async function answerApproval(approved) {
-  if (!approvalId) return;
-  const id = approvalId; approvalId = null; $('approval').close(); $('approval-image').removeAttribute('src');
-  try { await NexoApi.post('/api/approve', { id, approved }); } catch (err) { showError(err); }
-}
-$('approve').onclick = () => void answerApproval(true);
-$('deny').onclick = () => void answerApproval(false);
-$('approval').addEventListener('cancel', e => { e.preventDefault(); void answerApproval(false); });
+let leaving = false;
 async function poll() {
   if (leaving) return;
   try {
     const data = await NexoApi.get('/api/status');
     if (data.mode && data.mode.id !== lastModeEvent) { lastModeEvent = data.mode.id; window.nexoSetMode(data.mode.name); }
-    if (data.approval && approvalId !== data.approval.id) {
-      approvalId = data.approval.id;
-      $('approval-reason').textContent = data.approval.reason;
-      const a = data.approval.action;
-      $('approval-action').textContent = a.action + (a.key ? ': ' + a.key : a.text ? ': ' + a.text : a.x !== undefined ? ' bei ' + a.x + ', ' + a.y : '');
-      $('approval-image').src = 'data:image/jpeg;base64,' + data.approval.image;
-      if (!$('approval').open) $('approval').showModal();
-      if (queue.controller) void say('Bitte bestätige den nächsten Schritt im NEXO-Fenster.', queue.controller.signal).catch(showError);
-    } else if (!data.approval && approvalId) {
-      approvalId = null; $('approval').close(); $('approval-image').removeAttribute('src');
-    }
   } catch (err) { if (err.status === 401) { stopLocally(); showError(err); return; } }
   setTimeout(poll, 1000);
 }

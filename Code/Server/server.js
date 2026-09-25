@@ -154,11 +154,6 @@ function createNexoServer({ env = process.env, bridge, agent = createAgent({ env
         stopAll('Vom Nutzer gestoppt.');
         return json(res, 200, { ok: true });
       }
-      if (route === '/api/approve') {
-        if (typeof body.approved !== 'boolean' || typeof body.id !== 'string') throw failure(400, 'Ungültige Bestätigung.');
-        desktop.answerApproval(current.id, body.id, body.approved);
-        return json(res, 200, { ok: true });
-      }
       if (route === '/api/speech') {
         if (!env.GEMINI_API_KEY) throw failure(503, 'Für Sprachausgabe ist ein Gemini-Key in Server/.env nötig.');
         if (typeof body.text !== 'string' || !body.text.trim() || body.text.length > 4000) throw failure(400, 'Ungültiger Text für Sprachausgabe.');

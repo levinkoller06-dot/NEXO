@@ -231,43 +231,15 @@ test('No actions on stale frame or without grant', async () => {
   await assert.rejects(desktop.action('owner', { action: 'key', key: 'WIN', reason: 'Test', risk: 'routine', frameId: shot.frameId }), /veraltet/);
   desktop.disable();
 });
-test('Sensitive action: no execution before approval; reobserve required after approval', async () => {
-  const bridge = fakeBridge(), desktop = new DesktopController({ bridge });
-  await desktop.enable('owner'); const shot = await desktop.observe('owner');
-  const action = { action: 'key', key: 'ALT+F4', frameId: shot.frameId, reason: 'Fenster schließen', risk: 'sensitive' };
-  const pending = desktop.action('owner', action); await turn();
-  const request = desktop.status('owner').approval;
-  assert.ok(request); assert.equal(bridge.calls.filter(c => typeof c === 'object').length, 0);
-  assert.throws(() => desktop.answerApproval('other', request.id, true));
-  desktop.answerApproval('owner', request.id, true);
-  assert.equal((await pending).approvalGranted, true);
-  await assert.rejects(desktop.action('owner', action), /veraltet/);
-  const fresh = await desktop.observe('owner');
-  await desktop.action('owner', { ...action, frameId: fresh.frameId });
-  assert.equal(bridge.calls.filter(c => typeof c === 'object').length, 1);
-  desktop.disable();
-});
-test('Denied/cancelled approval never performs the action', async () => {
-  for (const abort of [false, true]) {
-    const bridge = fakeBridge(), desktop = new DesktopController({ bridge });
-    await desktop.enable('owner'); const shot = await desktop.observe('owner'), c = new AbortController();
-    const pending = desktop.action('owner', { action: 'key', key: 'DELETE', frameId: shot.frameId, reason: 'Löschen', risk: 'sensitive' }, c.signal);
-    const rejection = assert.rejects(pending);
-    await turn();
-    if (abort) c.abort(); else desktop.answerApproval('owner', desktop.status('owner').approval.id, false);
-    await rejection; assert.equal(bridge.calls.filter(c => typeof c === 'object').length, 0);
-    desktop.disable();
-  }
-});
-test('ALT+F4 and DELETE no longer force sensitive risk; routine runs without approval', async () => {
+test('risk=sensitive no longer blocks execution in code; confirmation is conversational now (agent.js prompt)', async () => {
   const bridge = fakeBridge(), desktop = new DesktopController({ bridge });
   await desktop.enable('owner');
-  for (const key of ['ALT+F4', 'DELETE']) {
+  for (const [key, risk] of [['ALT+F4', 'routine'], ['DELETE', 'routine'], ['ENTER', 'sensitive']]) {
     const shot = await desktop.observe('owner');
-    await desktop.action('owner', { action: 'key', key, frameId: shot.frameId, reason: 'Test', risk: 'routine' });
+    await desktop.action('owner', { action: 'key', key, frameId: shot.frameId, reason: 'Test', risk });
   }
-  assert.equal(desktop.status('owner').approval, null);
-  assert.equal(bridge.calls.filter(c => typeof c === 'object').length, 2);
+  assert.equal(desktop.status('owner').approval, undefined);
+  assert.equal(bridge.calls.filter(c => typeof c === 'object').length, 3);
   desktop.disable();
 });
 test('Global hotkey and HUD heartbeat loss revoke control', async () => {

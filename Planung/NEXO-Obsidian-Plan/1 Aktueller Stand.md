@@ -1,6 +1,6 @@
 # Aktueller Stand – NEXO
 
-Stand: 25.09.2026 · Schritt 032
+Stand: 25.09.2026 · Schritt 033
 
 ## Funktioniert
 HUD mit 99.220 Punkten aus einem 3D-Kopfmodell, Mausverfolgung (immer aktiv, ohne Ausschalter), Blinzeln, Mundanimation während Sprachausgabe, Farb-/Partikelübergängen, Großansicht, Browsernotiz und Fokus-Timer. Lokaler Node-Server mit Cloud-Anbietern: Fokus/Bereit → Gemini (ohne Thinking im reinen Chat, dynamisches Denken bei PC-Steuerung), Energie → OpenAI. Das bisherige Gespräch (Browser-Spracherkennung, Barge-in, Gemini-Sprachausgabe über `/api/speech`) läuft über den HTTP-Pfad; seit Schritt 030 ausschließlich mit Gemini-Stimme und audioabhängiger Mundöffnung. Zusätzlich existiert jetzt eine server-seitige Gemini-**Live**-Verbindung (`Code/Server/live.js`, `/ws/voice`) für eine geplante Dauerverbindungs-Architektur wie im Referenzprojekt "Karen" – live gegen die echte API validiert, aber noch nicht an den Browser angebunden. NEXO aktiviert die allgemeine Desktopsteuerung automatisch für die aktive Sitzung und plant Bildschirm-, Maus- und Tastaturaktionen; Klicks laufen standardmäßig unsichtbar über UI Automation, sonst Fensternachricht, sonst echte Maus (`pointer=visible`); `launch_app` startet installierte Programme direkt ohne Maus oder Windows-Suche, `search_web` öffnet eine Google-Suche direkt, `focus_window` holt ein Fenster gezielt per Titel nach vorne, `click_by_name` trifft benannte Bedienelemente ohne Koordinaten. Sensible Aktionen benötigen Bestätigung; Strg+Alt+F12 bleibt als unsichtbare Notabschaltung.
@@ -50,6 +50,7 @@ Cloud-KI bei lokal laufender Oberfläche und lokalem Server. OpenAI/Gemini sind 
 - [[030 2026-09-20 Direkter Appstart und Gemini Audio]]
 - [[031 2026-09-25 Jev-Architektur, Fokus-Fix bestaetigt, naechste Schritte]]
 - [[032 2026-09-25 Denkbudget nur bei Klickbedarf, engere Bestaetigungspflicht, TTS-Retry]]
+- [[033 2026-09-25 Sensible Aktionen per Sprache statt HUD-Freigabe bestaetigen]]
 
 Nach jedem abgeschlossenen Arbeits- oder Planungsschritt entsteht hier eine neue nummerierte Notiz im Ordner `Schritte`. Code und Notiz werden gemeinsam auf GitHub gesichert.
 

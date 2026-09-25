@@ -30,7 +30,7 @@ Geprüft: 61 automatisierte Tests, native Kompilierung, Spotify-Pfadauflösung a
 - Windows-Helfer über feste lokale PowerShell/C#-Dateien, JSON über stdin statt Shell-Interpolation. Startfehler, Zeitlimits und Abbruch werden behandelt.
 - Geschützte lokale API mit Host-/Origin-/Inhaltstypprüfung, Sitzungscookie, Sitzungstoken, Nachrichten-/Body-Limits und Pfadbegrenzung. Fehlerhafte URL-Codierung liefert 400.
 - PC-Steuerung wird bei jeder neuen Sitzung automatisch aktiviert. Globale Stopp-Taste Strg+Alt+F12 und Verbindungsüberwachung bleiben als unsichtbare Notabschaltung erhalten.
-- Konkrete Bestätigungsanfragen für als sensitive eingestufte Aktionen. Auf Nutzerwunsch (Schritt 032) betrifft `risk=sensitive` jetzt NUR NOCH Käufe/Zahlungen/Bestellungen, Installationen und Systemeinstellungen (z.B. Sicherheits-/Antivirus-Software); Delete und Alt+F4 erzwingen die Freigabe nicht mehr automatisch im Code, das Modell klassifiziert Löschen/Schließen/Absenden/Uploads jetzt selbst als routine. Nach Freigabe ist eine neue Beobachtung erforderlich.
+- `risk=sensitive` betrifft nur noch Käufe/Zahlungen/Bestellungen, Installationen und Systemeinstellungen (z.B. Sicherheits-/Antivirus-Software); Löschen/Schließen/Absenden/Uploads sind routine (Schritt 032). Seit Schritt 033 gibt es dafür KEIN HUD-Bestätigungsfenster mehr (das alte Freigabe-Popup samt `/api/approve` wurde entfernt, die "identische Aktion mit neuer frameId erneut anfordern"-Logik war fragil und lief bei kleinsten Abweichungen in eine Endlosschleife). Stattdessen fragt NEXO für sensible Aktionen ausdrücklich in der gesprochenen Antwort nach ("... ja oder nein?") und wartet auf die nächste Nutzeräußerung, bevor es das Werkzeug aufruft – reine Prompt-Disziplin, kein Code-Gate mehr.
 - Native Eingaben auf NEXOs eigenen Fenstern werden blockiert. Windows-Rechte/UAC werden nicht umgangen.
 - Starter wartet auf den Server, berücksichtigt PORT und zeigt Fehler an. Ältere Server werden nur bei eindeutig zum Projekt gehörendem Prozesspfad ersetzt.
 
@@ -44,7 +44,7 @@ Geprüft: 61 automatisierte Tests, native Kompilierung, Spotify-Pfadauflösung a
 - Kein echter Desktop-/Mikrofon-/Hotkey-End-to-End-Test in Schritt 021; native Kompilierung, Logik und API-Protokoll wurden geprüft.
 - OpenAI meldet aktuell fehlendes API-Guthaben. Dies kann nicht durch eine Codeänderung behoben werden. Fokus/Gemini hat im echten Schnittstellentest funktioniert.
 - Screenshots können alle sichtbaren Monitorinhalte enthalten. Sie bleiben bei NEXO im Arbeitsspeicher, maximal zwei im laufenden Modellkontext, und werden an den aktiven Cloud-Anbieter übertragen. Keine lokale Bildarchivierung.
-- Pro Auftrag: maximal 24 Modellrunden, 40 Werkzeugaufrufe, vier Minuten. API-Aufrufzeitlimit 45 Sekunden; Freigaben verfallen nach 90 Sekunden. Ein verlorenes HUD entzieht nach spätestens 15 Sekunden ohne Statuskontakt die PC-Freigabe.
+- Pro Auftrag: maximal 24 Modellrunden, 40 Werkzeugaufrufe, vier Minuten. API-Aufrufzeitlimit 45 Sekunden. Ein verlorenes HUD entzieht nach spätestens 15 Sekunden ohne Statuskontakt die PC-Freigabe.
 - Keine Kamera-Verfolgung, lautgenaue Lippensynchronisation, dauerhafte Erinnerung, Anmeldung über Geräte, Kalenderanbindung, Handy-App, Push oder Telefonie.
 - Notizen bleiben browserlokal; kein Schreiben nach Obsidian aus der App.
 
