@@ -71,5 +71,16 @@ test('configured Gemini voice survives synthesis and provider errors remain erro
     body = JSON.parse(args.body); return { ok: true, json: async () => ({ candidates: [{ content: { parts: [{ inlineData: { data: 'AAAA' } }] } }] }) };
   } }, 'Hallo');
   assert.equal(body.generationConfig.speechConfig.voiceConfig.prebuiltVoiceConfig.voiceName, 'Charon');
-  await assert.rejects(synthesizeSpeech({ env: { GEMINI_API_KEY: 'test' }, fetchImpl: async () => ({ ok: false, status: 429, json: async () => ({}) }) }, 'Hallo'), /429/);
+  await assert.rejects(synthesizeSpeech({ env: { GEMINI_API_KEY: 'test' }, retryDelays: [], fetchImpl: async () => ({ ok: false, status: 429, json: async () => ({}) }) }, 'Hallo'), /429/);
+  await assert.rejects(synthesizeSpeech({ env: { GEMINI_API_KEY: 'test' }, retryDelays: [], fetchImpl: async () => ({ ok: false, status: 400, json: async () => ({}) }) }, 'Hallo'), /400/);
+});
+test('synthesizeSpeech retries a transient failure once and still returns audio', async () => {
+  let calls = 0;
+  const audio = await synthesizeSpeech({ env: { GEMINI_API_KEY: 'test' }, retryDelays: [0], fetchImpl: async () => {
+    calls++;
+    if (calls === 1) return { ok: false, status: 503, json: async () => ({}) };
+    return { ok: true, json: async () => ({ candidates: [{ content: { parts: [{ inlineData: { data: 'AAAA' } }] } }] }) };
+  } }, 'Hallo');
+  assert.equal(calls, 2);
+  assert.ok(Buffer.isBuffer(audio));
 });

@@ -132,15 +132,17 @@ test('R6 Gemini: all parallel calls, original thought signatures and IDs, then a
   assert.doesNotMatch(captured[0].url, /fake/); // API key stays in header
   assert.doesNotMatch(JSON.stringify(captured[0].body.tools), /additionalProperties/);
 });
-test('Gemini thinking stays off for plain chat but on for desktop control', async () => {
+test('Gemini thinking stays off for plain chat and for the first desktop-control turn, only turns on after a screen/click tool is used', async () => {
   const captured = [];
-  const agent = createAgent({ env: { GEMINI_API_KEY: 'fake' }, fetchImpl: providerMock([
-    gemini([{ text: 'Chat-Antwort' }]), gemini([{ text: 'Control-Antwort' }])
-  ], captured) });
-  await agent.run({ ...requestBody, controlEnabled: false, execute: async () => ({ ok: true }) });
-  await agent.run({ ...requestBody, controlEnabled: true, execute: async () => ({ ok: true }) });
+  const chatAgent = createAgent({ env: { GEMINI_API_KEY: 'fake' }, fetchImpl: providerMock([gemini([{ text: 'Chat-Antwort' }])], captured) });
+  await chatAgent.run({ ...requestBody, controlEnabled: false, execute: async () => ({ ok: true }) });
   assert.equal(captured[0].body.generationConfig.thinkingConfig.thinkingBudget, 0);
-  assert.equal(captured[1].body.generationConfig.thinkingConfig.thinkingBudget, -1);
+  const controlAgent = createAgent({ env: { GEMINI_API_KEY: 'fake' }, fetchImpl: providerMock([
+    gemini([{ functionCall: { name: 'computer_observe', args: {} } }]), gemini([{ text: 'Control-Antwort' }])
+  ], captured) });
+  await controlAgent.run({ ...requestBody, controlEnabled: true, execute: async () => ({ ok: true, frameId: 'frame1', image: 'IMG', mimeType: 'image/jpeg' }) });
+  assert.equal(captured[1].body.generationConfig.thinkingConfig.thinkingBudget, 0);
+  assert.equal(captured[2].body.generationConfig.thinkingConfig.thinkingBudget, -1);
 });
 test('web_answer stays available without PC control, unlike the desktop tools', async () => {
   const captured = [];
@@ -232,7 +234,7 @@ test('No actions on stale frame or without grant', async () => {
 test('Sensitive action: no execution before approval; reobserve required after approval', async () => {
   const bridge = fakeBridge(), desktop = new DesktopController({ bridge });
   await desktop.enable('owner'); const shot = await desktop.observe('owner');
-  const action = { action: 'key', key: 'ALT+F4', frameId: shot.frameId, reason: 'Fenster schließen', risk: 'routine' };
+  const action = { action: 'key', key: 'ALT+F4', frameId: shot.frameId, reason: 'Fenster schließen', risk: 'sensitive' };
   const pending = desktop.action('owner', action); await turn();
   const request = desktop.status('owner').approval;
   assert.ok(request); assert.equal(bridge.calls.filter(c => typeof c === 'object').length, 0);
@@ -249,13 +251,24 @@ test('Denied/cancelled approval never performs the action', async () => {
   for (const abort of [false, true]) {
     const bridge = fakeBridge(), desktop = new DesktopController({ bridge });
     await desktop.enable('owner'); const shot = await desktop.observe('owner'), c = new AbortController();
-    const pending = desktop.action('owner', { action: 'key', key: 'DELETE', frameId: shot.frameId, reason: 'Löschen', risk: 'routine' }, c.signal);
+    const pending = desktop.action('owner', { action: 'key', key: 'DELETE', frameId: shot.frameId, reason: 'Löschen', risk: 'sensitive' }, c.signal);
     const rejection = assert.rejects(pending);
     await turn();
     if (abort) c.abort(); else desktop.answerApproval('owner', desktop.status('owner').approval.id, false);
     await rejection; assert.equal(bridge.calls.filter(c => typeof c === 'object').length, 0);
     desktop.disable();
   }
+});
+test('ALT+F4 and DELETE no longer force sensitive risk; routine runs without approval', async () => {
+  const bridge = fakeBridge(), desktop = new DesktopController({ bridge });
+  await desktop.enable('owner');
+  for (const key of ['ALT+F4', 'DELETE']) {
+    const shot = await desktop.observe('owner');
+    await desktop.action('owner', { action: 'key', key, frameId: shot.frameId, reason: 'Test', risk: 'routine' });
+  }
+  assert.equal(desktop.status('owner').approval, null);
+  assert.equal(bridge.calls.filter(c => typeof c === 'object').length, 2);
+  desktop.disable();
 });
 test('Global hotkey and HUD heartbeat loss revoke control', async () => {
   let now = 0, stops = 0;

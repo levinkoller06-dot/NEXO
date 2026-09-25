@@ -36,7 +36,6 @@ function validateAction(args) {
     const parts = a.key.split('+');
     const valid = /^(CTRL|ALT|SHIFT|WIN|ENTER|TAB|ESC|BACKSPACE|DELETE|SPACE|UP|DOWN|LEFT|RIGHT|HOME|END|PAGEUP|PAGEDOWN|[A-Z0-9]|F([1-9]|1[0-9]|2[0-4]))$/;
     if (parts.length > 4 || new Set(parts).size !== parts.length || parts.some(p => !valid.test(p))) throw new Error('Unbekanntes Tastenkürzel.');
-    if (parts.includes('DELETE') || (parts.includes('ALT') && parts.includes('F4'))) a.risk = 'sensitive';
     if (a.key === 'CTRL+ALT+F12') throw new Error('Stopp-Taste ist dem Nutzer vorbehalten.');
   }
   return a;
